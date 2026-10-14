@@ -40,7 +40,7 @@
   .char[data-c="female"].sel { border-color: #ff5b5b; }
   .opts { display: grid; grid-template-columns: auto auto; gap: 8px 10px; align-items: center; }
   .opts .lbl { text-align: right; }
-  .opts .btns { justify-content: flex-start; gap: 6px; }
+  .opts .btns { justify-content: flex-start; gap: 6px; max-width: 340px; }
   .opts button { font-size: 15px; padding: 7px 12px; }
   .howto { max-width: 360px; font-size: 13px; line-height: 1.6; color: #cfd6ea; }
   .howto b { color: #ffd166; }
@@ -70,7 +70,7 @@
   .help .s1 { color: #ff8c50; } .help .s2 { color: #6eaaff; } .help .s3 { color: #82f082; }
   .help p { margin: 6px 0; }
   .help .tip { background: #1d2850; border-left: 4px solid #ffd166; padding: 8px 12px; margin: 8px 0; border-radius: 4px; }
-  .helpBtn { background: transparent; border-color: #5a6890; font-size: 15px; padding: 8px 18px; }
+  .helpBtn, .helpBtn2 { background: transparent; border-color: #5a6890; font-size: 15px; padding: 8px 18px; }
   @media (max-height: 460px) {
     .overlay { gap: 8px; padding: 10px; }
     h1 { font-size: 20px; }
@@ -80,6 +80,7 @@
     .opts { gap: 6px 8px; }
     .opts button { padding: 6px 10px; font-size: 14px; }
     button.main { padding: 9px 30px; font-size: 18px; }
+    .howto { display: none; }
   }
 </style>
 </head>
@@ -99,6 +100,11 @@
     </div>
     <div class="col">
       <div class="opts">
+        <div class="lbl">模式</div>
+        <div class="btns" id="modes">
+          <button data-m="match" class="sel">比賽</button>
+          <button data-m="practice">練習</button>
+        </div>
         <div class="lbl">難度</div>
         <div class="btns" id="diffs">
           <button data-d="easy">簡單</button>
@@ -110,12 +116,22 @@
           <button data-h="right" class="sel">右手</button>
           <button data-h="left">左手</button>
         </div>
-        <div class="lbl">局數</div>
-        <div class="btns" id="bestOf">
+        <div class="lbl matchOnly">局數</div>
+        <div class="btns matchOnly" id="bestOf">
           <button data-n="1">1 局</button>
           <button data-n="3" class="sel">三戰兩勝</button>
           <button data-n="5">五戰三勝</button>
           <button data-n="7">七戰四勝</button>
+        </div>
+        <div class="lbl practiceOnly hidden">練習球路</div>
+        <div class="btns practiceOnly hidden" id="prKinds">
+          <button data-k="random" class="sel">隨機</button>
+          <button data-k="drive">平擊</button>
+          <button data-k="loop">上旋拉球</button>
+          <button data-k="chop">下旋切球</button>
+          <button data-k="side">側旋</button>
+          <button data-k="short">短球</button>
+          <button data-k="lob">吊高球</button>
         </div>
       </div>
       <div class="howto">
@@ -123,7 +139,10 @@
         每局 11 分，建議<b>橫向</b>遊玩。
       </div>
       <button id="startBtn" class="main">開始比賽</button>
-      <button class="helpBtn">📖 遊戲說明</button>
+      <div class="btns">
+        <button class="helpBtn">📖 遊戲說明</button>
+        <button class="soundBtn helpBtn2">🔊 音效：開</button>
+      </div>
     </div>
   </div>
 </div>
@@ -131,7 +150,10 @@
 <div id="pauseOv" class="overlay hidden">
   <h1>暫停</h1>
   <button id="resumeBtn" class="main">繼續</button>
-  <button class="helpBtn">📖 遊戲說明</button>
+  <div class="btns">
+    <button class="helpBtn">📖 遊戲說明</button>
+    <button class="soundBtn helpBtn2">🔊 音效：開</button>
+  </div>
   <button id="quitBtn">回主選單</button>
 </div>
 
@@ -235,6 +257,15 @@
       <li>接<b>上旋</b>（橘紅）：往上撈容易飛出底線，往下切球會彈得太高。<b>橫向平著打</b>最穩。</li>
       <li>接<b>側旋</b>（綠）：回球會往旋轉的方向偏，瞄準時往反方向修正一點。</li>
     </ul>
+
+    <h2>八、練習模式</h2>
+    <ul>
+      <li>在主選單的「模式」選<b>練習</b>，再選要練的球路：隨機、平擊、上旋拉球、下旋切球、側旋、短球或吊高球。</li>
+      <li>對手會一直送同一種球過來，不會回擊。你的球落在對手那半邊就算成功。</li>
+      <li>上方會顯示成功數、目前連續成功數（STREAK）和最佳紀錄（BEST）。</li>
+      <li>畫面下方會提示這種球該怎麼接。想結束練習，按上方中間的暫停，再選「回主選單」。</li>
+    </ul>
+    <p>主選單和暫停畫面的「🔊 音效」可以開關聲音。</p>
   </div>
   <button id="helpClose" class="main">知道了</button>
 </div>
@@ -346,39 +377,116 @@ function resize() {
   placePauseButton();
 }
 
-// ---------- 音效 ----------
-let AC = null;
+// ---------- 音效（全部用 Web Audio 即時合成，不需要音檔） ----------
+let AC = null, master = null, noiseBuf = null, crowdGain = null, crowdLevel = 0;
 function initAudio() {
-  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } }
-  if (AC && AC.state === 'suspended') AC.resume();
+  if (!AC) {
+    try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; return; }
+    master = AC.createGain(); master.gain.value = S.sound ? 1 : 0; master.connect(AC.destination);
+    noiseBuf = AC.createBuffer(1, AC.sampleRate * 2, AC.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    startCrowdBed();
+  }
+  if (AC.state === 'suspended') AC.resume();
 }
-function blip(freq, dur, vol, type) {
-  if (!AC || vol <= 0.001) return;
-  const t = AC.currentTime, o = AC.createOscillator(), gn = AC.createGain();
+// 一小段經過濾波的雜訊（擊球聲的「啪」、掌聲、觀眾聲都是用這個做的）
+function noise(t, dur, type, freq, Q, vol, attack) {
+  attack = attack || 0.002;
+  const src = AC.createBufferSource(), f = AC.createBiquadFilter(), gn = AC.createGain();
+  src.buffer = noiseBuf; f.type = type; f.frequency.setValueAtTime(freq, t); f.Q.value = Q;
+  gn.gain.setValueAtTime(0.0001, t);
+  gn.gain.exponentialRampToValueAtTime(Math.max(vol, 0.0002), t + attack);
+  gn.gain.exponentialRampToValueAtTime(0.0001, t + attack + dur);
+  src.connect(f); f.connect(gn); gn.connect(master);
+  src.start(t, Math.random() * 1.5); src.stop(t + attack + dur + 0.05);
+}
+// 一個音高往下掉的短音（拍子、桌板的共鳴）
+function tone(t, f0, f1, dur, vol, type) {
+  const o = AC.createOscillator(), gn = AC.createGain();
   o.type = type || 'sine';
-  o.frequency.setValueAtTime(freq, t);
-  o.frequency.exponentialRampToValueAtTime(freq * 0.6, t + dur);
-  gn.gain.setValueAtTime(vol, t);
-  gn.gain.exponentialRampToValueAtTime(0.001, t + dur);
-  o.connect(gn).connect(AC.destination);
+  o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  gn.gain.setValueAtTime(Math.max(vol, 0.0002), t); gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(gn); gn.connect(master);
   o.start(t); o.stop(t + dur + 0.02);
 }
-const distVol = z => clamp(1.2 - z / TL * 0.8, 0.25, 1);
+const playSfx = fn => (...a) => { if (AC) fn(AC.currentTime, ...a); };
+const distVol = z => clamp(1.2 - z / TL * 0.8, 0.25, 1);   // 對面的聲音小一點
 const sfx = {
-  table: z => blip(1100, 0.06, 0.25 * distVol(z), 'triangle'),
-  paddle: z => { blip(700, 0.07, 0.35 * distVol(z), 'square'); blip(1500, 0.03, 0.15 * distVol(z)); },
-  net: () => blip(220, 0.12, 0.25, 'sawtooth'),
-  floor: () => blip(500, 0.05, 0.1, 'triangle'),
-  edge: () => blip(1700, 0.04, 0.3, 'square'),
-  cord: () => blip(320, 0.08, 0.22, 'triangle'),
-  win: () => { blip(660, 0.12, 0.2); setTimeout(() => blip(990, 0.18, 0.2), 110); },
-  lose: () => { blip(330, 0.15, 0.2); setTimeout(() => blip(220, 0.2, 0.2), 130); },
+  // 擊球：膠皮的「啵」加上木頭拍身的共鳴，揮得越用力越清脆
+  paddle: playSfx((t, z, power) => {
+    const v = distVol(z), pw = power == null ? 0.5 : power;
+    noise(t, 0.025, 'bandpass', 2400 + pw * 1600, 1.4, 0.55 * v);
+    tone(t, 1250 + pw * 350, 800, 0.045, 0.3 * v, 'triangle');
+    tone(t, 240, 140, 0.05, 0.22 * v);
+  }),
+  // 落桌：清脆的「答」加上桌板低沉的共鳴
+  table: playSfx((t, z) => {
+    const v = distVol(z);
+    noise(t, 0.018, 'bandpass', 3400, 2.5, 0.35 * v);
+    tone(t, 1150, 900, 0.06, 0.28 * v);
+    tone(t, 300, 190, 0.08, 0.25 * v);
+  }),
+  net: playSfx(t => { noise(t, 0.16, 'lowpass', 1000, 0.7, 0.3); tone(t, 170, 110, 0.12, 0.12, 'triangle'); }),
+  cord: playSfx(t => { noise(t, 0.04, 'bandpass', 1800, 3, 0.3); noise(t + 0.05, 0.1, 'lowpass', 900, 0.7, 0.18); }),
+  edge: playSfx(t => { noise(t, 0.012, 'highpass', 3500, 0.7, 0.5); tone(t, 1900, 1500, 0.03, 0.2, 'triangle'); }),
+  floor: playSfx(t => { noise(t, 0.02, 'bandpass', 2200, 2, 0.12); tone(t, 650, 480, 0.06, 0.1); }),
+};
+
+// 觀眾背景聲：一直在播的低聲交談，比賽中才調大
+function startCrowdBed() {
+  crowdGain = AC.createGain(); crowdGain.gain.value = 0; crowdGain.connect(master);
+  for (const [freq, q, vol] of [[350, 0.8, 0.05], [900, 1.2, 0.025]]) {
+    const src = AC.createBufferSource(), f = AC.createBiquadFilter(), gn = AC.createGain();
+    src.buffer = noiseBuf; src.loop = true; f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
+    gn.gain.value = vol;
+    const lfo = AC.createOscillator(), lg = AC.createGain();   // 音量慢慢起伏，聽起來比較像人聲
+    lfo.frequency.value = 0.13 + Math.random() * 0.1; lg.gain.value = vol * 0.5;
+    lfo.connect(lg); lg.connect(gn.gain); lfo.start();
+    src.connect(f); f.connect(gn); gn.connect(crowdGain); src.start();
+  }
+}
+function setCrowd(level) {
+  if (!AC || !crowdGain || level === crowdLevel) return;
+  crowdLevel = level;
+  crowdGain.gain.setTargetAtTime(level, AC.currentTime, 0.4);
+}
+// 掌聲：很多短促、音色不同的拍手聲
+function applause(strength, dur) {
+  if (!AC) return;
+  const t0 = AC.currentTime, n = Math.round(dur * (30 + 50 * strength));
+  for (let i = 0; i < n; i++) {
+    const k = Math.pow(Math.random(), 1.7);
+    noise(t0 + 0.05 + k * dur, rand(0.006, 0.016), 'bandpass', rand(900, 2800), 1.6,
+      (0.04 + 0.07 * strength) * (1 - k) * rand(0.4, 1));
+  }
+}
+// 一群人的「喔～」：濾波器頻率往上是歡呼、往下是惋惜
+function roar(strength, dur, f0, f1) {
+  if (!AC) return;
+  const t = AC.currentTime;
+  for (const [mul, q, v] of [[1, 1.4, 1], [2.3, 2.5, 0.5]]) {
+    const src = AC.createBufferSource(), f = AC.createBiquadFilter(), gn = AC.createGain();
+    src.buffer = noiseBuf; src.loop = true; f.type = 'bandpass'; f.Q.value = q;
+    f.frequency.setValueAtTime(f0 * mul, t); f.frequency.linearRampToValueAtTime(f1 * mul, t + dur * 0.6);
+    gn.gain.setValueAtTime(0.0001, t);
+    gn.gain.exponentialRampToValueAtTime(0.12 * strength * v, t + dur * 0.25);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(gn); gn.connect(master);
+    src.start(t, Math.random()); src.stop(t + dur + 0.05);
+  }
+}
+const crowd = {
+  cheer: st => { roar(st, 1.4 + st, 520, 820); applause(st, 1.6 + 1.2 * st); },   // 你得分：歡呼＋掌聲
+  aww: () => { roar(0.5, 1.0, 700, 380); applause(0.15, 1.0); },                  // 你失分：惋惜＋零星掌聲
+  ooh: () => roar(0.35, 0.8, 450, 750),                                           // 擦網、擦邊：驚呼
 };
 
 // ---------- 遊戲狀態 ----------
 const S = {
   mode: 'menu',          // menu | play | pause | over
-  diff: 'normal', char: 'male', hand: 'right', bestOf: 3,
+  diff: 'normal', char: 'male', hand: 'right', bestOf: 3, sound: true,
+  practice: false, prKind: 'random', prHits: 0, prTotal: 0, streak: 0, bestStreak: 0, lastKind: 'drive', rally: 0,
   phase: 'serveWait',    // serveWait | toss | aiServe | rally | pointOver
   ps: 0, as: 0, pg: 0, ag: 0, game: 1, firstServer: 'player', server: 'player', games: [],
   timer: 0, lastHitter: null, bounces: 0, netted: false, lastPower: 0.5,
@@ -523,16 +631,19 @@ function playerShot(power, dirX, dirY, offset, sx, sy) {
   const si = spinInfo(top, side);
   if (si) popups.push({ text: si.name, x: sx, y: sy + 26, t: 0, color: si.css });
   paddle.kick = 1;
-  sfx.paddle(0);
+  S.rally++;
+  sfx.paddle(0, power);
   if (navigator.vibrate) { try { navigator.vibrate(18); } catch (e) { /* 不支援就略過 */ } }
 }
 
-function aiShot(serve) {
+// force：指定球路（練習模式用）
+function aiShot(serve, force) {
   const d = DIFF[S.diff];
   const T0 = d.T * rand(0.9, 1.1) * (serve ? 1.15 : 1);
   let tx = rand(-1, 1) * d.aimX * (serve ? 0.6 : 1);
   let kind = 'drive';
-  if (!serve) {
+  if (force) kind = force;
+  else if (!serve) {
     let r = Math.random();
     for (const k in d.p) { if (r < d.p[k]) { kind = k; break; } r -= d.p[k]; }
   }
@@ -578,8 +689,9 @@ function aiShot(serve) {
   const si = spinInfo(ball.top, ball.side);
   if (si && kind !== 'err' && kind !== 'cord') popAtBall(kind === 'short' ? '下旋短球' : si.name, si.css);
   S.lastHitter = 'ai'; S.bounces = 0; S.netted = false; S.edged = false; S.phase = 'rally';
+  S.lastKind = kind; S.rally++;
   oppSwing();
-  sfx.paddle(ball.z);
+  sfx.paddle(ball.z, 0.6);
 }
 
 function aiHitReady(b) {
@@ -663,19 +775,48 @@ const isGameOver = () => (S.ps >= 11 || S.as >= 11) && Math.abs(S.ps - S.as) >= 
 function showMsg(msg, sub, color, t) { S.msg = msg; S.sub = sub; S.msgColor = color; S.msgT = t || 1.4; }
 
 function point(winner, kind) {
-  if (winner === 'player') { S.ps++; showMsg('得分！', MSG_WIN[kind], '#5dff9a'); sfx.win(); }
-  else { S.as++; showMsg('失分', MSG_LOSE[kind], '#ff6b6b'); sfx.lose(); }
+  if (S.practice) {
+    if (winner === 'player' && S.lastHitter === 'ai') { S.phase = 'pointOver'; S.timer = 0.6; return; }   // 發球機的球沒進，重發
+    practiceResult(winner === 'player', kind);
+    return;
+  }
+  if (winner === 'player') { S.ps++; showMsg('得分！', MSG_WIN[kind], '#5dff9a'); }
+  else { S.as++; showMsg('失分', MSG_LOSE[kind], '#ff6b6b'); }
   if (BOT) botLog.push(winner[0] + ':' + kind);
   if (isGameOver()) {
     const won = S.ps > S.as;
     showMsg(won ? '拿下這局！' : '輸掉這局', S.ps + ' - ' + S.as, won ? '#ffd166' : '#ff6b6b', 1.6);
+    if (won) crowd.cheer(1); else crowd.aww();
   } else {
+    // 對打越久，得分時歡呼越大聲
+    if (winner === 'player') crowd.cheer(clamp(0.45 + S.rally * 0.06, 0.45, 1)); else crowd.aww();
     S.server = nextServer();
   }
   S.phase = 'pointOver'; S.timer = 1.6;
 }
 
+// 練習模式：球落在對手那半邊就算成功
+function practiceResult(ok, kind) {
+  S.prTotal++;
+  if (ok) {
+    S.prHits++; S.streak++; S.bestStreak = Math.max(S.bestStreak, S.streak);
+    showMsg('好球！', '連續 ' + S.streak + ' 球', '#5dff9a', 0.9);
+    if (S.streak % 10 === 0) crowd.cheer(0.7);
+  } else {
+    S.streak = 0;
+    showMsg('失誤', MSG_LOSE[kind], '#ff6b6b', 0.9);
+  }
+  S.phase = 'pointOver'; S.timer = 1.0;
+}
+const PR_KINDS = ['drive', 'loop', 'chop', 'side', 'short', 'lob'];
+const practiceKind = () => (S.prKind === 'random' ? PR_KINDS[(Math.random() * PR_KINDS.length) | 0] : S.prKind);
+const PR_TIPS = {
+  drive: '平擊：從球的旁邊往中間滑', loop: '上旋：橫向平著打最穩', chop: '下旋：往上撈或往下切回去',
+  side: '側旋：瞄準時往反方向修正', short: '短球：直接在桌子上方打', lob: '吊高球：等球落下來再打',
+};
+
 function endOfPoint() {
+  if (S.practice) { S.phase = 'serveWait'; S.timer = 0.3; return; }
   if (!isGameOver()) { S.phase = 'serveWait'; S.timer = 0.4; return; }
   if (S.ps > S.as) S.pg++; else S.ag++;
   S.games.push(S.ps + '-' + S.as);
@@ -690,8 +831,10 @@ function endOfPoint() {
 function ruleTable(side) {
   const hitter = S.lastHitter;
   if (side === hitter) { point(other(hitter), S.netted ? 'net' : 'own'); return; }
-  if (S.bounces === 0) S.bounces = 1;
-  else point(hitter, 'miss');
+  if (S.bounces === 0) {
+    S.bounces = 1;
+    if (S.practice && hitter === 'player') practiceResult(true);
+  } else point(hitter, 'miss');
 }
 function ruleOut() {
   const hitter = S.lastHitter;
@@ -701,13 +844,13 @@ function ruleOut() {
 
 function onEvent(ev) {
   if (ev === 'table' || ev === 'edge') {
-    if (ev === 'edge') { sfx.edge(); if (S.phase === 'rally') { S.edged = true; popAtBall('擦邊!', '#ffb347'); } }
+    if (ev === 'edge') { sfx.edge(); if (S.phase === 'rally') { S.edged = true; popAtBall('擦邊!', '#ffb347'); crowd.ooh(); } }
     else sfx.table(ball.z);
     marks.push({ x: ball.x, z: ball.z, t: 0 });
     if (S.phase === 'rally') ruleTable(ball.z < NETZ ? 'player' : 'ai');
   } else if (ev === 'cord') {
     sfx.cord();
-    if (S.phase === 'rally') popAtBall('擦網!', '#ffb347');
+    if (S.phase === 'rally') { popAtBall('擦網!', '#ffb347'); crowd.ooh(); }
   } else if (ev === 'net') {
     sfx.net();
     if (S.phase === 'rally') S.netted = true;
@@ -718,12 +861,12 @@ function onEvent(ev) {
 }
 
 function startServe() {
-  ball.visible = true; trail.length = 0;
+  ball.visible = true; trail.length = 0; S.rally = 0;
   if (S.server === 'player') {
     Object.assign(ball, { x: 0.15, y: TT + 0.12, z: -0.15, vx: 0, vy: 2.7, vz: 0, top: 0, side: 0, e: null });
     S.phase = 'toss';
   } else {
-    S.phase = 'aiServe'; S.timer = 0.9; ball.top = 0; ball.side = 0;
+    S.phase = 'aiServe'; S.timer = S.practice ? 0.6 : 0.9; ball.top = 0; ball.side = 0;
   }
 }
 
@@ -814,7 +957,7 @@ function update(dt) {
   } else if (S.phase === 'aiServe') {
     Object.assign(ball, { x: ai.x, y: 1.05 + Math.abs(Math.sin(S.timer * 7)) * 0.12, z: ai.z - 0.1, vx: 0, vy: 0, vz: 0 });
     S.timer -= dt;
-    if (S.timer <= 0) aiShot(true);
+    if (S.timer <= 0) { if (S.practice) aiShot(false, practiceKind()); else aiShot(true); }
   } else {
     const n = 6, h = dt / n;
     for (let i = 0; i < n; i++) {
@@ -1157,7 +1300,7 @@ function scoreBox(x, y, w, h, u, fill, border, label, score, serving, scoreLeft)
   ctx.fillStyle = '#0a1226'; ctx.fillRect(sx, y + 3 * u, sw, h - 6 * u);
   ctx.fillStyle = border; ctx.fillRect(scoreLeft ? sx + sw : sx - 2 * u, y + 3 * u, 2 * u, h - 6 * u);
   ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
-  ctx.fillStyle = '#fff'; ctx.font = `${Math.round(18 * u)}px ${FONT}`;
+  ctx.fillStyle = '#fff'; ctx.font = `${Math.round(18 * u * Math.min(1, 2.2 / String(score).length))}px ${FONT}`;
   ctx.fillText(String(score), sx + sw / 2, y + h / 2 + u);
   const lx = scoreLeft ? x + 3 * u + sw + (w - sw - 6 * u) / 2 : x + 3 * u + (w - sw - 6 * u) / 2;
   ctx.font = `${Math.round(8 * u)}px ${FONT}`;
@@ -1169,17 +1312,22 @@ function scoreBox(x, y, w, h, u, fill, border, label, score, serving, scoreLeft)
 
 function drawHUD() {
   const u = hudU(), b = centerBox(), bw = 150 * u, pad = 8 * u;
-  const playing = S.mode !== 'menu';
-  scoreBox(pad, b.y, bw, b.h, u, '#173a8f', '#5d8cff', 'PLAYER', S.ps, playing && S.server === 'player', false);
-  scoreBox(W - pad - bw, b.y, bw, b.h, u, '#6e1420', '#ff5b5b', 'COMPUTER', S.as, playing && S.server === 'ai', true);
+  const playing = S.mode !== 'menu', pr = S.practice && playing;
+  if (pr) {
+    scoreBox(pad, b.y, bw, b.h, u, '#173a8f', '#5d8cff', 'SUCCESS', S.prHits + '/' + S.prTotal, false, false);
+    scoreBox(W - pad - bw, b.y, bw, b.h, u, '#1d5a3a', '#5ddf9a', 'STREAK', S.streak, false, true);
+  } else {
+    scoreBox(pad, b.y, bw, b.h, u, '#173a8f', '#5d8cff', 'PLAYER', S.ps, playing && S.server === 'player', false);
+    scoreBox(W - pad - bw, b.y, bw, b.h, u, '#6e1420', '#ff5b5b', 'COMPUTER', S.as, playing && S.server === 'ai', true);
+  }
   ctx.fillStyle = '#05080f'; ctx.fillRect(b.x - 2 * u, b.y - 2 * u, b.w + 4 * u, b.h + 4 * u);
   ctx.fillStyle = '#34405e'; ctx.fillRect(b.x, b.y, b.w, b.h);
   ctx.fillStyle = '#0f1730'; ctx.fillRect(b.x + 2 * u, b.y + 2 * u, b.w - 4 * u, b.h - 4 * u);
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#e8ecff';
   ctx.font = `${Math.round(8 * u)}px ${FONT}`;
-  ctx.fillText('GAME ' + S.game, W / 2, b.y + 14 * u);
+  ctx.fillText(pr ? 'PRACTICE' : 'GAME ' + S.game, W / 2, b.y + 14 * u);
   ctx.fillStyle = '#9fb0d8';
-  ctx.fillText(S.pg + ' - ' + S.ag, W / 2, b.y + 29 * u);
+  ctx.fillText(pr ? 'BEST ' + S.bestStreak : S.pg + ' - ' + S.ag, W / 2, b.y + 29 * u);
   if (S.mode === 'play') {   // 暫停圖示
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
     ctx.fillRect(b.x + b.w - 11 * u, b.y + 6 * u, 2 * u, 6 * u);
@@ -1212,6 +1360,7 @@ function drawHUD() {
   let hint = '';
   if (S.mode === 'play') {
     if (S.phase === 'toss') hint = '發球！手指從旁邊往中間滑過球';
+    else if (S.practice) { if (S.phase === 'rally' && S.lastHitter === 'ai') hint = PR_TIPS[S.lastKind] || ''; }
     else if (S.game === 1 && S.ps + S.as < 3 && S.phase === 'rally' && S.lastHitter === 'ai') hint = '球從哪邊來，就點那一側往中間滑';
   }
   if (hint) {
@@ -1270,6 +1419,29 @@ document.querySelectorAll('#hands button').forEach(b => {
     paddle.init = false;
   });
 });
+document.querySelectorAll('#modes button').forEach(b => {
+  b.addEventListener('click', () => {
+    S.practice = b.dataset.m === 'practice';
+    document.querySelectorAll('#modes button').forEach(x => x.classList.toggle('sel', x === b));
+    document.querySelectorAll('.matchOnly').forEach(x => x.classList.toggle('hidden', S.practice));
+    document.querySelectorAll('.practiceOnly').forEach(x => x.classList.toggle('hidden', !S.practice));
+    $('startBtn').textContent = S.practice ? '開始練習' : '開始比賽';
+  });
+});
+document.querySelectorAll('#prKinds button').forEach(b => {
+  b.addEventListener('click', () => {
+    S.prKind = b.dataset.k;
+    document.querySelectorAll('#prKinds button').forEach(x => x.classList.toggle('sel', x === b));
+  });
+});
+document.querySelectorAll('.soundBtn').forEach(b => {
+  b.addEventListener('click', () => {
+    S.sound = !S.sound;
+    initAudio();
+    if (master) master.gain.setTargetAtTime(S.sound ? 1 : 0, AC.currentTime, 0.05);
+    document.querySelectorAll('.soundBtn').forEach(x => { x.textContent = S.sound ? '🔊 音效：開' : '🔇 音效：關'; });
+  });
+});
 document.querySelectorAll('#bestOf button').forEach(b => {
   b.addEventListener('click', () => {
     S.bestOf = Number(b.dataset.n);
@@ -1280,7 +1452,9 @@ document.querySelectorAll('#bestOf button').forEach(b => {
 function startGame() {
   initAudio();
   Object.assign(S, { mode: 'play', phase: 'serveWait', timer: 0.8, ps: 0, as: 0, pg: 0, ag: 0, game: 1, games: [],
-    firstServer: 'player', server: 'player', msgT: 0, lastHitter: null });
+    firstServer: 'player', server: 'player', msgT: 0, lastHitter: null,
+    prHits: 0, prTotal: 0, streak: 0, bestStreak: 0, rally: 0 });
+  if (S.practice) { S.firstServer = 'ai'; S.server = 'ai'; }   // 練習模式一直由對手送球
   Object.assign(ai, { x: 0, y: 1.0, attempted: false });
   ball.visible = false;
   show('menuOv', false); show('overOv', false); show('pauseOv', false); show('pause', true);
@@ -1297,6 +1471,7 @@ function matchOver() {
   $('goScore').textContent = S.pg + ' - ' + S.ag;
   $('goSub').textContent = '各局比分：' + S.games.join('、');
   show('overOv', true); show('pause', false);
+  if (won) crowd.cheer(1);
   if (BOT) document.body.dataset.result = JSON.stringify({ pg: S.pg, ag: S.ag, games: S.games, shots: botShots, recv: botRecv, log: botLog });
 }
 
@@ -1335,6 +1510,7 @@ function frame(t) {
   const dt = Math.min(0.033, Math.max(0, (t - last) / 1000));
   last = t;
   if (S.mode === 'play') update(dt);
+  setCrowd(S.mode === 'play' ? (S.practice ? 0.35 : 1) : 0);
   updateOpp(dt);
   draw(dt);
   requestAnimationFrame(frame);
