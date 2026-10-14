@@ -59,6 +59,23 @@
   #goSub { color: #cfd6ea; font-size: 14px; }
   .overlay { touch-action: pan-y; }
   #helpOv { background: rgba(7, 11, 26, .96); }
+  .hands { display: flex; gap: 28px; }
+  .hand {
+    display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 26px;
+    background: #121a36; border: 3px solid #2a3560; border-radius: 14px; font-size: 16px;
+  }
+  .hand .fist { position: relative; font-size: 56px; line-height: 1; }
+  .hand .ballDot {
+    position: absolute; right: -6px; top: 4px; width: 22px; height: 22px; border-radius: 50%;
+    background: #fff; box-shadow: inset -3px -3px 0 #c9ceda, 0 0 10px rgba(255,255,255,.6);
+  }
+  .hand.win { border-color: #5ddf9a; background: #173a2a; }
+  .hand.lose { border-color: #ff5b5b; background: #3a1720; }
+  .hand:disabled { opacity: 1; color: #fff; }
+  .hands.shake .fist { animation: shake .14s 4 alternate; }
+  @keyframes shake { from { transform: translateX(-6px) rotate(-10deg); } to { transform: translateX(6px) rotate(10deg); } }
+  #tossChoice .main { font-size: 17px; padding: 11px 22px; }
+  .tossMsg { max-width: 380px; font-size: 15px; line-height: 1.6; color: #e8ecff; }
   .help { max-width: 620px; text-align: left; font-size: 14px; line-height: 1.7; color: #dfe5f5; }
   .help h1 { text-align: center; margin-bottom: 4px; }
   .help h2 { font-size: 17px; color: #ffd166; margin: 16px 0 4px; }
@@ -149,6 +166,21 @@
   </div>
 </div>
 
+<div id="tossOv" class="overlay hidden">
+  <h1>猜球</h1>
+  <div class="tossMsg" id="tossText">裁判把球藏在其中一隻手裡。猜對的人可以決定先發球，還是先接發球。</div>
+  <div class="hands" id="tossHands">
+    <button class="hand" data-h="L"><span class="fist">✊</span><span>左邊</span></button>
+    <button class="hand" data-h="R"><span class="fist">✊</span><span>右邊</span></button>
+  </div>
+  <div class="btns hidden" id="tossChoice">
+    <button class="main" data-f="player">我先發球</button>
+    <button class="main" data-f="ai">我先接發球</button>
+  </div>
+  <button id="tossGo" class="main hidden">開始比賽</button>
+  <button id="tossBack" class="helpBtn2">返回</button>
+</div>
+
 <div id="pauseOv" class="overlay hidden">
   <h1>暫停</h1>
   <button id="resumeBtn" class="main">繼續</button>
@@ -223,6 +255,7 @@
       <li>球要先在你這邊彈一次才能打（發球除外），而且要在它第二次落下（桌面或地板）之前打回去，不然就失分。</li>
       <li>球落在桌子邊緣（擦邊）算有效。</li>
       <li>每局 11 分；打到 10:10 之後，要領先 2 分才算贏這局。</li>
+      <li>比賽開始前會<b>猜球</b>：猜球在裁判的哪一隻手裡，猜對的人決定先發球或先接發球。</li>
       <li>每 2 分換人發球，10:10 之後每 1 分換一次；每一局換人先發球。</li>
       <li>發球：球會往上拋，從旁邊滑過球就能直接打到對面。沒打到的話會重新拋球，不會失分。</li>
       <li>局數可以在主選單選：1 局、三戰兩勝、五戰三勝或七戰四勝。</li>
@@ -1451,15 +1484,18 @@ document.querySelectorAll('#bestOf button').forEach(b => {
   });
 });
 
-function startGame() {
+// first：第一局誰先發球（猜球決定），沒給就是玩家先發
+function startGame(first) {
   initAudio();
-  Object.assign(S, { mode: 'play', phase: 'serveWait', timer: 0.8, ps: 0, as: 0, pg: 0, ag: 0, game: 1, games: [],
-    firstServer: 'player', server: 'player', msgT: 0, lastHitter: null,
+  const fs = first === 'ai' ? 'ai' : 'player';
+  Object.assign(S, { mode: 'play', phase: 'serveWait', timer: 1.2, ps: 0, as: 0, pg: 0, ag: 0, game: 1, games: [],
+    firstServer: fs, server: fs, msgT: 0, lastHitter: null,
     prHits: 0, prTotal: 0, streak: 0, bestStreak: 0, rally: 0 });
   if (S.practice) { S.firstServer = 'ai'; S.server = 'ai'; }   // 練習模式一直由對手送球
+  else showMsg(fs === 'player' ? '你先發球' : '對手先發球', 'GAME 1', '#ffd166', 1.4);
   Object.assign(ai, { x: 0, y: 1.0, attempted: false });
   ball.visible = false;
-  show('menuOv', false); show('overOv', false); show('pauseOv', false); show('pause', true);
+  show('menuOv', false); show('overOv', false); show('pauseOv', false); show('tossOv', false); show('pause', true);
   const el = document.documentElement;
   if (!BOT && el.requestFullscreen && !document.fullscreenElement) el.requestFullscreen().catch(() => {});
 }
@@ -1483,8 +1519,51 @@ function toMenu() {
   show('pauseOv', false); show('overOv', false); show('pause', false); show('menuOv', true);
 }
 
-$('startBtn').addEventListener('click', startGame);
-$('againBtn').addEventListener('click', startGame);
+// ---------- 猜球：猜對的人決定先發球或先接發球 ----------
+let tossBall = 'L', tossFirst = 'player', tossDone = false;
+function openToss() {
+  if (S.practice) { startGame(); return; }
+  initAudio();
+  tossBall = Math.random() < 0.5 ? 'L' : 'R';
+  tossDone = false;
+  $('tossText').textContent = '裁判把球藏在其中一隻手裡。猜對的人可以決定先發球，還是先接發球。';
+  document.querySelectorAll('.hand').forEach(h => {
+    h.disabled = false; h.classList.remove('win', 'lose');
+    h.querySelector('.fist').textContent = '✊';
+  });
+  show('tossChoice', false); show('tossGo', false);
+  show('menuOv', false); show('overOv', false); show('tossOv', true);
+}
+document.querySelectorAll('.hand').forEach(b => {
+  b.addEventListener('click', () => {
+    if (tossDone) return;
+    tossDone = true;
+    document.querySelectorAll('.hand').forEach(h => { h.disabled = true; });
+    $('tossHands').classList.add('shake');
+    setTimeout(() => {   // 搖一搖之後打開雙手
+      $('tossHands').classList.remove('shake');
+      document.querySelectorAll('.hand').forEach(h => {
+        const has = h.dataset.h === tossBall;
+        h.querySelector('.fist').innerHTML = has ? '✋<span class="ballDot"></span>' : '✋';
+        if (h === b) h.classList.add(has ? 'win' : 'lose');
+      });
+      if (b.dataset.h === tossBall) {
+        $('tossText').textContent = '猜對了！你要先發球，還是先接發球？';
+        show('tossChoice', true);
+      } else {
+        tossFirst = Math.random() < 0.5 ? 'ai' : 'player';
+        $('tossText').textContent = '猜錯了…對手選擇' + (tossFirst === 'ai' ? '先發球。' : '先接發球，由你先發球。');
+        show('tossGo', true);
+      }
+    }, 650);
+  });
+});
+document.querySelectorAll('#tossChoice button').forEach(b => b.addEventListener('click', () => startGame(b.dataset.f)));
+$('tossGo').addEventListener('click', () => startGame(tossFirst));
+$('tossBack').addEventListener('click', () => { show('tossOv', false); show('menuOv', true); });
+
+$('startBtn').addEventListener('click', openToss);
+$('againBtn').addEventListener('click', openToss);
 $('menuBtn').addEventListener('click', toMenu);
 $('quitBtn').addEventListener('click', toMenu);
 // 遊戲說明：從主選單或暫停畫面打開，關掉後回到原本的畫面
