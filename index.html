@@ -66,6 +66,9 @@
   .help .rate { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 6px 0; align-items: center; }
   .help .rate span:nth-child(odd) { font-family: 'Press Start 2P', monospace; font-size: 11px; }
   .help .r1 { color: #ffd166; } .help .r2 { color: #9be7ff; } .help .r3 { color: #ccc; }
+  .help .rate .s1, .help .rate .s2, .help .rate .s3 { font-family: inherit; font-size: 14px; font-weight: bold; }
+  .help .s1 { color: #ff8c50; } .help .s2 { color: #6eaaff; } .help .s3 { color: #82f082; }
+  .help p { margin: 6px 0; }
   .help .tip { background: #1d2850; border-left: 4px solid #ffd166; padding: 8px 12px; margin: 8px 0; border-radius: 4px; }
   .helpBtn { background: transparent; border-color: #5a6890; font-size: 15px; padding: 8px 18px; }
   @media (max-height: 460px) {
@@ -166,16 +169,17 @@
       <li><b>對準</b>：讓球拍中心正好掃過球。打中時畫面會顯示上面的評價。</li>
       <li><b>速度</b>：滑得越快，球越快、落點越深（越靠近對手底線），對手越難接。</li>
       <li><b>方向</b>：滑動的左右方向決定球往左或往右飛。往<b>斜上方</b>滑比較穩；完全橫著滑，會把球打向邊線附近。</li>
+      <li><b>旋轉</b>：往上滑是上旋拉球、往下滑是下旋切球、橫著滑會帶側旋（見「七、旋轉球」）。</li>
       <li><b>時機</b>：在球飛到手指附近的那一刻滑過去。太早滑，球還沒到，拍子就已經離開了。</li>
       <li><b>高度</b>：球掉到比桌面還低之前打。</li>
     </ul>
-    <p class="tip">最佳擊球：拍子對準球，在球到的瞬間，往斜上方（對手的方向）快速滑過去。</p>
+    <p class="tip">最佳擊球：拍子對準球，在球到的瞬間，往斜上方（對手的方向）快速滑過去。遇到旋轉球時，照「七、旋轉球」的接法調整滑動方向。</p>
 
     <h2>三、什麼情況容易掛網</h2>
     <ul>
       <li>拍子沒對準，只用邊緣擦到球。</li>
       <li>滑得太慢、軟弱無力。</li>
-      <li>手指往下滑（往自己的方向切）。</li>
+      <li>接<b>下旋球</b>（藍色殘影）時平著打：要往上撈或往下切回去。</li>
       <li>球已經掉到比桌面還低才打。</li>
       <li>就算打得很好，偶爾也會擦到網子：可能翻過去掉在對面網前（顯示「擦網!」），也可能掉回自己這邊。</li>
     </ul>
@@ -184,7 +188,9 @@
     <ul>
       <li><b>沒對準又滑很快</b>：球容易飛太遠，超過對手的底線。</li>
       <li><b>沒對準又完全橫著滑</b>：球容易打出邊線。</li>
-      <li>只要拍子中心對準球，就算全力揮拍也不會出界。</li>
+      <li>接<b>上旋球</b>（橘紅色殘影）時往上撈：球會飛太遠。</li>
+      <li>接<b>側旋球</b>（綠色殘影）時：回球會往旁邊偏，瞄準時要往反方向修正。</li>
+      <li>只要拍子中心對準球、又用對旋轉的接法，就算全力揮拍也很少出界。</li>
     </ul>
 
     <h2>五、得分規則</h2>
@@ -205,7 +211,29 @@
       <li><b>短球</b>：落在網前，第二跳還在桌上，要直接在桌子上方打。</li>
       <li><b>擦邊</b>：打到桌子邊緣，球又低又快地彈開，很難接。</li>
       <li><b>擦網</b>：擦過網子後掉在網前，要趕快在桌子上方打。</li>
-      <li>難度越高，對手跑得越快、回球越快，短球和擦邊也越多。</li>
+      <li><b>上旋拉球</b>、<b>下旋切球</b>、<b>側旋</b>：見下面「七、旋轉球」。</li>
+      <li>難度越高，對手跑得越快、回球越快，短球、擦邊和強烈的上旋拉球也越多。</li>
+    </ul>
+
+    <h2>七、旋轉球</h2>
+    <p>對手打出旋轉球時，畫面會顯示球路名稱，球的殘影和球上的線條也會變色：</p>
+    <div class="rate">
+      <span class="s1">橘紅</span><span><b>上旋拉球</b>：球又快又往下壓，落桌後往前衝</span>
+      <span class="s2">藍色</span><span><b>下旋切球</b>：球慢、會飄，落桌後減速、彈得低（短球也帶下旋）</span>
+      <span class="s3">綠色</span><span><b>側旋</b>：球在空中往旁邊彎，落桌後往旁邊跳</span>
+    </div>
+    <p><b>怎麼打出旋轉球</b></p>
+    <ul>
+      <li><b>往上滑</b>（往對手的方向）＝上旋拉球：球速快、弧線往下掉，比較不會飛出界。</li>
+      <li><b>往下滑</b>（往自己的方向）＝下旋切球：球速慢、落點比較短，落桌後會減速。</li>
+      <li><b>橫著滑</b>＝帶側旋：球會在空中往旁邊彎，落桌後往旁邊跳。</li>
+      <li>滑得越快，旋轉越強，對手也越容易失誤。</li>
+    </ul>
+    <p><b>怎麼接旋轉球</b></p>
+    <ul>
+      <li>接<b>下旋</b>（藍）：平著打容易掛網。往上撈（拉回去）或往下切（回切）都可以。</li>
+      <li>接<b>上旋</b>（橘紅）：往上撈容易飛出底線，往下切球會彈得太高。<b>橫向平著打</b>最穩。</li>
+      <li>接<b>側旋</b>（綠）：回球會往旋轉的方向偏，瞄準時往反方向修正一點。</li>
     </ul>
   </div>
   <button id="helpClose" class="main">知道了</button>
@@ -245,13 +273,14 @@ const params = new URLSearchParams(location.search);
 const BOT = params.has('bot');
 
 const DIFF = {
-  // p：對手回球的球路機率（吊高球、短球、擦邊、擦網、失誤），其餘是貼著桌面的平擊
-  easy:   { label: '簡單', T: 1.00, aimX: 0.35, aiSpeed: 1.6, react: 0.25, miss: 0.10, missPow: 0.30,
-            p: { lob: 0.12, short: 0.06, edge: 0.02, cord: 0.02, err: 0.10 } },
-  normal: { label: '普通', T: 0.82, aimX: 0.50, aiSpeed: 2.3, react: 0.15, miss: 0.05, missPow: 0.20,
-            p: { lob: 0.10, short: 0.12, edge: 0.04, cord: 0.03, err: 0.06 } },
-  hard:   { label: '困難', T: 0.64, aimX: 0.62, aiSpeed: 3.2, react: 0.08, miss: 0.02, missPow: 0.10,
-            p: { lob: 0.06, short: 0.16, edge: 0.06, cord: 0.04, err: 0.03 } },
+  // p：對手回球的球路機率（吊高球、短球、擦邊、擦網、失誤、上旋拉球、下旋切球、側旋），其餘是帶一點上旋的平擊
+  // spinMiss：玩家打出旋轉球時，對手多出來的失誤率（乘上旋轉強度）
+  easy:   { label: '簡單', T: 1.00, aimX: 0.35, aiSpeed: 1.6, react: 0.25, miss: 0.10, missPow: 0.30, spinMiss: 0.15,
+            p: { lob: 0.10, short: 0.06, edge: 0.02, cord: 0.02, err: 0.10, loop: 0.04, chop: 0.08, side: 0.05 } },
+  normal: { label: '普通', T: 0.82, aimX: 0.50, aiSpeed: 2.3, react: 0.15, miss: 0.05, missPow: 0.20, spinMiss: 0.10,
+            p: { lob: 0.08, short: 0.10, edge: 0.04, cord: 0.03, err: 0.06, loop: 0.10, chop: 0.12, side: 0.08 } },
+  hard:   { label: '困難', T: 0.64, aimX: 0.62, aiSpeed: 3.2, react: 0.08, miss: 0.02, missPow: 0.10, spinMiss: 0.05,
+            p: { lob: 0.05, short: 0.14, edge: 0.06, cord: 0.04, err: 0.03, loop: 0.16, chop: 0.14, side: 0.10 } },
 };
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -356,24 +385,35 @@ const S = {
   msg: '', sub: '', msgColor: '#fff', msgT: 0,
 };
 const oppChar = () => (S.char === 'male' ? 'female' : 'male');
-const ball = { x: 0, y: 1, z: 0, vx: 0, vy: 0, vz: 0, visible: false };
+// top：上旋(+) / 下旋(-)，side：側旋（往 +x 或 -x 彎），範圍 -1 ~ 1
+const ball = { x: 0, y: 1, z: 0, vx: 0, vy: 0, vz: 0, top: 0, side: 0, visible: false };
 const ai = { x: 0, y: 1.0, z: TL + 0.25, attempted: false, react: 0 };
 const opp = { bx: 0.37, anim: 'idle', frame: 0, t: 0, hitT: -1, vs: 0, lastX: 0 };
 const trail = [], marks = [], popups = [];
 const botLog = [], botShots = {}, botRecv = [];
 
 const E_TABLE = 0.88;   // 一般落桌的反彈係數；b.e 可以指定下一次落桌用的係數
+const TOPA = 6, SIDEA = 1.8;   // 旋轉造成的加速度：上旋往下壓、下旋往上飄、側旋往旁邊彎
+
+// 落桌反彈：上旋往前衝、彈得較低；下旋減速；側旋往旁邊跳。之後旋轉減弱
+function bounce(b, e) {
+  b.vy = -b.vy * e * (b.top > 0 ? 1 - 0.25 * b.top : 1);
+  b.vx = b.vx * 0.97 + b.side * 0.6;
+  b.vz = b.vz * 0.97 * (b.top < 0 ? 1 + 0.45 * b.top : 1) + Math.sign(b.vz) * Math.max(0, b.top) * 1.2;
+  b.top *= 0.6; b.side *= 0.6;
+}
 
 function integrate(b, h) {
   const pz = b.z, py = b.y;
-  b.vy -= G * h;
+  b.vy -= (G + TOPA * b.top) * h;
+  b.vx += SIDEA * b.side * h;
   b.x += b.vx * h; b.y += b.vy * h; b.z += b.vz * h;
   if ((pz - NETZ) * (b.z - NETZ) < 0 && b.y < NETTOP + BR && b.y > TT && Math.abs(b.x) < NETHW) {
     if (b.y > NETTOP + BR - 0.022 && Math.random() < 0.6) {   // 擦到網子上緣，球翻過去掉在網前
       b.vz *= 0.35; b.vx *= 0.5; b.vy = 0.7 + Math.random() * 0.6;
       return 'cord';
     }
-    b.z = pz; b.vz = -b.vz * 0.15; b.vx *= 0.4; b.vy = Math.min(b.vy, 0) * 0.3;
+    b.z = pz; b.vz = -b.vz * 0.15; b.vx *= 0.4; b.vy = Math.min(b.vy, 0) * 0.3; b.top = 0; b.side = 0;
     return 'net';
   }
   if (b.vy < 0 && b.y - BR <= TT && py - BR >= TT - 1e-6) {
@@ -383,55 +423,66 @@ function integrate(b, h) {
       (ax >= HW - 0.01 || b.z <= 0.01 || b.z >= TL - 0.01);
     if ((onTable || nearEdge) && -b.vy < 0.5) { b.y = TT + BR; b.vy = 0; return null; }   // 在桌面上滾動
     if (nearEdge) {   // 擦邊：球貼著桌邊彈開，又低又快
-      b.y = TT + BR; b.vy = -b.vy * 0.25; b.e = null;
+      b.y = TT + BR; b.vy = -b.vy * 0.25; b.e = null; b.top *= 0.5; b.side *= 0.5;
       if (ax >= HW - 0.01) b.vx += Math.sign(b.x) * 0.8;
       return 'edge';
     }
     if (onTable) {
       b.y = TT + BR;
-      b.vy = -b.vy * (b.e != null ? b.e : E_TABLE); b.e = null;
-      b.vx *= 0.97; b.vz *= 0.97;
+      bounce(b, b.e != null ? b.e : E_TABLE); b.e = null;
       return 'table';
     }
   }
   if (b.y < BR && b.vy < 0) {
-    b.y = BR; b.vy = -b.vy * 0.55; b.vx *= 0.85; b.vz *= 0.85;
+    b.y = BR; b.vy = -b.vy * 0.55; b.vx *= 0.85; b.vz *= 0.85; b.top = 0; b.side = 0;
     return 'floor';
   }
   return null;
 }
 
 // 讓球飛 T 秒後落在 (tx, tz)，並確保過網時比網子高 clear 公尺；回傳實際飛行時間
+// 旋轉（ball.top / ball.side）要先設定好，這裡會把旋轉造成的彎曲算進去
 function hitBall(tx, tz, T, clear) {
-  const ty = TT + BR;
+  const ty = TT + BR, gE = G + TOPA * ball.top;
   for (let i = 0; i < 12; i++) {
-    const vz = (tz - ball.z) / T, vy = (ty - ball.y + 0.5 * G * T * T) / T;
+    const vz = (tz - ball.z) / T, vy = (ty - ball.y + 0.5 * gE * T * T) / T;
     const tn = (NETZ - ball.z) / vz;
-    const yn = ball.y + vy * tn - 0.5 * G * tn * tn;
+    const yn = ball.y + vy * tn - 0.5 * gE * tn * tn;
     if (yn > NETTOP + BR + clear) break;
     T *= 1.08;
   }
-  ball.vx = (tx - ball.x) / T;
+  ball.vx = (tx - ball.x) / T - 0.5 * SIDEA * ball.side * T;
   ball.vz = (tz - ball.z) / T;
-  ball.vy = (ty - ball.y + 0.5 * G * T * T) / T;
+  ball.vy = (ty - ball.y + 0.5 * gE * T * T) / T;
   ball.e = null;
   return T;
 }
 
 // 讓球在 tn 秒後打到網子所在平面的高度 yNet（用來做擦網或掛網）
 function hitNet(x, yNet, tn) {
-  ball.vx = (x - ball.x) / tn;
+  const gE = G + TOPA * ball.top;
+  ball.vx = (x - ball.x) / tn - 0.5 * SIDEA * ball.side * tn;
   ball.vz = (NETZ - ball.z) / tn;
-  ball.vy = (yNet - ball.y + 0.5 * G * tn * tn) / tn;
+  ball.vy = (yNet - ball.y + 0.5 * gE * tn * tn) / tn;
   ball.e = null;
 }
 
 // 調整下一次落桌的反彈，讓球到玩家擊球點（底線後 0.2 公尺）時只比桌面高 h
 function lowBounce(tz, T, h) {
-  const vyLand = Math.abs(ball.vy - G * T), vz2 = Math.abs(ball.vz) * 0.97;
-  const t2 = Math.max(0.05, (tz + 0.2) / vz2);
-  const vyUp = (h + 0.5 * G * t2 * t2) / t2;
-  ball.e = clamp(vyUp / vyLand, 0.3, 0.92);
+  const c = { vx: ball.vx + SIDEA * ball.side * T, vy: ball.vy - (G + TOPA * ball.top) * T, vz: ball.vz,
+    top: ball.top, side: ball.side };
+  bounce(c, 1);   // 先用反彈係數 1 算出落桌後的速度，再按比例找出需要的係數
+  const t2 = Math.max(0.05, (tz + 0.2) / Math.abs(c.vz));
+  const vyUp = (h + 0.5 * (G + TOPA * c.top) * t2 * t2) / t2;
+  ball.e = clamp(vyUp / c.vy, 0.3, 0.92);
+}
+
+// 旋轉的名稱與顏色（球的殘影也用同樣的顏色）
+function spinInfo(top, side) {
+  if (top > 0.45) return { name: '上旋拉球', rgb: '255,140,80', css: '#ff8c50' };
+  if (top < -0.3) return { name: '下旋切球', rgb: '110,170,255', css: '#6eaaff' };
+  if (Math.abs(side) > 0.35) return { name: '側旋', rgb: '130,240,130', css: '#82f082' };
+  return null;
 }
 
 function popAtBall(text, color) {
@@ -440,21 +491,37 @@ function popAtBall(text, color) {
 }
 
 function playerShot(power, dirX, dirY, offset, sx, sy) {
-  let tz = 1.95 + 0.6 * power;
+  const inTop = ball.top, inSide = ball.side;   // 來球的旋轉
+  // 揮拍方向決定旋轉：往上滑 = 上旋拉球，往下滑 = 下旋切球，橫著滑 = 帶側旋
+  const up = -dirY;
+  const top = clamp(up * 1.25, -1, 1) * (0.5 + 0.5 * power);
+  const side = dirX * 0.6 * Math.max(0, 1 - 2 * Math.abs(up));
+  let tz = top < 0 ? 1.8 + 0.5 * power : 1.95 + 0.6 * power;
   let tx = dirX * 0.5 + ball.x * 0.1;
   const err = 0.04 + offset * offset * 0.22;
   tx += rand(-err, err); tz += rand(-err, err);
-  const T = 0.98 - 0.46 * power;
-  // 打偏、揮太慢、往下切、或球已經掉到桌面以下，都比較容易掛網
-  const pNet = 0.03 + offset * offset * 0.25 + (power < 0.12 ? 0.12 : 0) + Math.max(0, dirY) * 0.12 + (ball.y < TT ? 0.06 : 0);
+  const T = (0.98 - 0.46 * power) * (1 - 0.15 * Math.max(0, top)) * (1 + 0.3 * Math.max(0, -top));
+  let clear = 0.03;
+  // 接旋轉球：下旋平著打容易掛網；上旋往上撈會飛太遠、往下切會彈太高；側旋會讓回球往旁邊偏
+  let spinNet = 0;
+  if (inTop < 0) spinNet = -inTop * 0.35 * (1 - Math.abs(top));
+  if (inTop > 0 && top > 0.2) tz += inTop * top * 0.45;
+  if (inTop > 0 && top < -0.2) { tz += inTop * -top * 0.3; clear += inTop * 0.3; }
+  tx += inSide * 0.3;
+  // 打偏、揮太慢、球已經掉到桌面以下、或用錯方法接下旋，都比較容易掛網
+  const pNet = 0.03 + offset * offset * 0.25 + (power < 0.12 ? 0.12 : 0) + (ball.y < TT ? 0.06 : 0) + spinNet;
+  ball.top = top; ball.side = side;
   const r = Math.random();
   if (r < pNet) hitNet(tx * 0.9, NETTOP - rand(0.02, 0.08), T * 0.5);
   else if (r < pNet + 0.04) hitNet(tx * 0.9, NETTOP + BR - 0.012, T * 0.5);
-  else hitBall(tx, tz, T, 0.03);
+  else hitBall(tx, tz, T, clear);
   S.lastHitter = 'player'; S.bounces = 0; S.netted = false; S.edged = false; S.lastPower = power; S.phase = 'rally';
+  S.lastSpin = Math.abs(top) + Math.abs(side);
   ai.attempted = false; ai.react = DIFF[S.diff].react;
   popups.push({ text: offset < 0.3 ? 'PERFECT!' : offset < 0.65 ? 'GOOD' : 'OK', x: sx, y: sy, t: 0,
     color: offset < 0.3 ? '#ffd166' : offset < 0.65 ? '#9be7ff' : '#ccc' });
+  const si = spinInfo(top, side);
+  if (si) popups.push({ text: si.name, x: sx, y: sy + 26, t: 0, color: si.css });
   paddle.kick = 1;
   sfx.paddle(0);
   if (navigator.vibrate) { try { navigator.vibrate(18); } catch (e) { /* 不支援就略過 */ } }
@@ -467,8 +534,17 @@ function aiShot(serve) {
   let kind = 'drive';
   if (!serve) {
     let r = Math.random();
-    for (const k of ['lob', 'short', 'edge', 'cord', 'err']) { if (r < d.p[k]) { kind = k; break; } r -= d.p[k]; }
+    for (const k in d.p) { if (r < d.p[k]) { kind = k; break; } r -= d.p[k]; }
   }
+  // 先決定旋轉 [上旋/下旋, 側旋]，軌跡計算會把旋轉算進去
+  const SPIN = {
+    loop: [rand(0.8, 1), rand(-0.15, 0.15)],
+    chop: [-rand(0.6, 1), rand(-0.15, 0.15)],
+    short: [-rand(0.5, 0.9), 0],
+    side: [rand(0, 0.3), (Math.random() < 0.5 ? -1 : 1) * rand(0.7, 1)],
+    lob: [rand(0.2, 0.4), 0],
+  };
+  [ball.top, ball.side] = SPIN[kind] || [rand(0.15, 0.4), rand(-0.2, 0.2)];
   if (kind === 'err') {   // 失誤：掛網、打出邊線或打太長
     const q = Math.random();
     if (q < 0.4) hitNet(tx * 0.8, NETTOP - rand(0.02, 0.08), T0 * 0.55);
@@ -478,10 +554,18 @@ function aiShot(serve) {
     hitNet(tx * 0.8, NETTOP + BR - 0.012, T0 * 0.55);
   } else if (kind === 'lob') {
     hitBall(tx, rand(0.2, 0.6), rand(1.15, 1.35), 0.1);
-  } else if (kind === 'short') {   // 短球：落在網前，第二跳還在桌上
+  } else if (kind === 'short') {   // 短球：帶下旋落在網前，第二跳還在桌上
     hitBall(tx * 0.8, rand(0.95, 1.15), T0 * rand(1.0, 1.15), 0.03);
     ball.e = rand(0.4, 0.55);
-  } else {   // 平擊（含擦邊）：落桌後彈得低
+  } else if (kind === 'loop') {   // 上旋拉球：又快又往下壓，落桌後往前衝
+    const tz = rand(0.15, 0.5);
+    const T = hitBall(tx, tz, T0 * 0.9, 0.03);
+    lowBounce(tz, T, rand(0.1, 0.25));
+  } else if (kind === 'chop') {   // 下旋切球：慢、飄，落桌後減速、彈得低
+    const tz = rand(0.2, 0.7);
+    const T = hitBall(tx, tz, T0 * 1.2, 0.03);
+    lowBounce(tz, T, rand(0.08, 0.2));
+  } else {   // 平擊、側旋（含擦邊）：落桌後彈得低
     let tz = rand(0.15, 0.75);
     if (kind === 'edge') {
       if (Math.random() < 0.5) tx = (tx < 0 ? -1 : 1) * (HW - 0.003);
@@ -491,6 +575,8 @@ function aiShot(serve) {
     lowBounce(tz, T, rand(0.1, 0.3));
   }
   if (BOT) botShots[kind] = (botShots[kind] || 0) + 1;
+  const si = spinInfo(ball.top, ball.side);
+  if (si && kind !== 'err' && kind !== 'cord') popAtBall(kind === 'short' ? '下旋短球' : si.name, si.css);
   S.lastHitter = 'ai'; S.bounces = 0; S.netted = false; S.edged = false; S.phase = 'rally';
   oppSwing();
   sfx.paddle(ball.z);
@@ -501,7 +587,7 @@ function aiHitReady(b) {
 }
 
 function predictAIHit() {
-  const b = { x: ball.x, y: ball.y, z: ball.z, vx: ball.vx, vy: ball.vy, vz: ball.vz };
+  const b = { x: ball.x, y: ball.y, z: ball.z, vx: ball.vx, vy: ball.vy, vz: ball.vz, top: ball.top, side: ball.side, e: ball.e };
   let bounced = S.bounces === 1;
   for (let i = 0; i < 360; i++) {
     const ev = integrate(b, 1 / 120);
@@ -529,7 +615,8 @@ function updateAI(dt) {
   if (S.phase === 'rally' && S.lastHitter === 'player' && S.bounces === 1 && !ai.attempted && aiHitReady(ball)) {
     ai.attempted = true;
     const reach = Math.abs(ai.x - ball.x) < 0.26 && ball.y > TT - 0.1;
-    const missChance = d.miss + d.missPow * S.lastPower + (Math.abs(ball.x) > HW ? 0.12 : 0) + (S.edged ? 0.6 : 0);
+    const missChance = d.miss + d.missPow * S.lastPower + (Math.abs(ball.x) > HW ? 0.12 : 0) + (S.edged ? 0.6 : 0)
+      + d.spinMiss * (S.lastSpin || 0);
     if (reach && Math.random() > missChance) aiShot(false);
     else oppSwing();   // 揮空
   }
@@ -633,10 +720,10 @@ function onEvent(ev) {
 function startServe() {
   ball.visible = true; trail.length = 0;
   if (S.server === 'player') {
-    Object.assign(ball, { x: 0.15, y: TT + 0.12, z: -0.15, vx: 0, vy: 2.7, vz: 0 });
+    Object.assign(ball, { x: 0.15, y: TT + 0.12, z: -0.15, vx: 0, vy: 2.7, vz: 0, top: 0, side: 0, e: null });
     S.phase = 'toss';
   } else {
-    S.phase = 'aiServe'; S.timer = 0.9;
+    S.phase = 'aiServe'; S.timer = 0.9; ball.top = 0; ball.side = 0;
   }
 }
 
@@ -982,16 +1069,26 @@ function drawMarks() {
 
 function drawBall() {
   if (!ball.visible) return;
+  const si = spinInfo(ball.top, ball.side);
+  const rgb = si ? si.rgb : '255,255,255', a0 = si ? 0.3 : 0.08, da = si ? 0.09 : 0.05;
   for (let i = 0; i < trail.length - 1; i++) {
     const q = proj(...trail[i]);
     if (!q) continue;
-    circle(g, q.x, q.y, Math.max(1.5, VBR * q.s * 0.9), `rgba(255,255,255,${0.08 + i * 0.05})`);
+    circle(g, q.x, q.y, Math.max(1.5, VBR * q.s * 0.9), `rgba(${rgb},${a0 + i * da})`);
   }
   const p = proj(ball.x, ball.y, ball.z);
   if (!p) return;
   const r = Math.max(2, VBR * p.s);
   circle(g, p.x, p.y, r, '#d9dde8');
   circle(g, p.x - r * 0.15, p.y - r * 0.15, r * 0.82, '#ffffff');
+  const spin = Math.abs(ball.top) > Math.abs(ball.side) ? ball.top : ball.side;
+  if (r >= 3.5 && Math.abs(spin) > 0.1) {   // 旋轉的球上畫一條會轉的線
+    const a = performance.now() / 1000 * spin * 25;
+    g.strokeStyle = si ? si.css : 'rgba(140,150,180,0.9)';
+    g.lineWidth = Math.max(1, r * 0.22);
+    g.beginPath(); g.moveTo(p.x - Math.cos(a) * r * 0.7, p.y - Math.sin(a) * r * 0.7);
+    g.lineTo(p.x + Math.cos(a) * r * 0.7, p.y + Math.sin(a) * r * 0.7); g.stroke();
+  }
   if (r > 4) circle(g, p.x - r * 0.35, p.y - r * 0.35, r * 0.25, '#ffffff');
 }
 
@@ -1092,9 +1189,11 @@ function drawHUD() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   for (const p of popups) {
     ctx.globalAlpha = clamp(1 - p.t / 0.8, 0, 1);
-    ctx.font = `${Math.round(11 * u)}px ${FONT}`;
-    ctx.fillStyle = '#000'; ctx.fillText(p.text, p.x + 2, p.y - 40 - p.t * 50 + 2);
-    ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y - 40 - p.t * 50);
+    ctx.font = `bold ${Math.round(13 * u)}px ${FONT}`;
+    const py = p.y - 40 - p.t * 50;
+    ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(3, 4 * u); ctx.strokeStyle = '#000';
+    ctx.strokeText(p.text, p.x, py);
+    ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, py);
   }
   ctx.globalAlpha = 1;
 
