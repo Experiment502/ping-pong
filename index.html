@@ -478,7 +478,7 @@ function roar(strength, dur, f0, f1) {
 }
 const crowd = {
   cheer: st => { roar(st, 1.4 + st, 520, 820); applause(st, 1.6 + 1.2 * st); },   // 你得分：歡呼＋掌聲
-  aww: () => { roar(0.5, 1.0, 700, 380); applause(0.15, 1.0); },                  // 你失分：惋惜＋零星掌聲
+  aww: () => { roar(0.2, 0.5, 420, 420); applause(0.35, 1.3); },                  // 你失分：觀眾替對手禮貌性鼓掌
   ooh: () => roar(0.35, 0.8, 450, 750),                                           // 擦網、擦邊：驚呼
 };
 
