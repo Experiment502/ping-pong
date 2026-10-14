@@ -17,10 +17,13 @@
   }
   canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
   .overlay {
-    position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
     gap: 12px; padding: 16px; box-sizing: border-box; text-align: center; background: rgba(7, 11, 26, .86);
     overflow: auto;
   }
+  /* 置中，但內容比螢幕高時還能捲到最上面 */
+  .overlay > :first-child { margin-top: auto; }
+  .overlay > :last-child { margin-bottom: auto; }
   .hidden { display: none !important; }
   h1 { margin: 0; font-size: 24px; letter-spacing: 1px; }
   .row { display: flex; flex-wrap: wrap; gap: 18px 28px; justify-content: center; align-items: center; }
@@ -35,7 +38,11 @@
   .char.sel { border-color: #ffd166; background: #1d2850; }
   .char[data-c="male"].sel { border-color: #5d8cff; }
   .char[data-c="female"].sel { border-color: #ff5b5b; }
-  .howto { max-width: 330px; font-size: 14px; line-height: 1.6; color: #cfd6ea; }
+  .opts { display: grid; grid-template-columns: auto auto; gap: 8px 10px; align-items: center; }
+  .opts .lbl { text-align: right; }
+  .opts .btns { justify-content: flex-start; gap: 6px; }
+  .opts button { font-size: 15px; padding: 7px 12px; }
+  .howto { max-width: 360px; font-size: 13px; line-height: 1.6; color: #cfd6ea; }
   .howto b { color: #ffd166; }
   .btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
   button {
@@ -48,6 +55,16 @@
   #goImg { height: min(30vh, 180px); image-rendering: pixelated; }
   #goScore { font-family: 'Press Start 2P', monospace; font-size: 22px; }
   #goSub { color: #cfd6ea; font-size: 14px; }
+  @media (max-height: 460px) {
+    .overlay { gap: 8px; padding: 10px; }
+    h1 { font-size: 20px; }
+    .row { gap: 10px 22px; }
+    .col { gap: 8px; }
+    .char img { height: min(34vh, 150px); }
+    .opts { gap: 6px 8px; }
+    .opts button { padding: 6px 10px; font-size: 14px; }
+    button.main { padding: 9px 30px; font-size: 18px; }
+  }
 </style>
 </head>
 <body>
@@ -65,21 +82,29 @@
       </div>
     </div>
     <div class="col">
-      <div class="lbl">難度</div>
-      <div class="btns" id="diffs">
-        <button data-d="easy">簡單</button>
-        <button data-d="normal" class="sel">普通</button>
-        <button data-d="hard">困難</button>
-      </div>
-      <div class="lbl">慣用手</div>
-      <div class="btns" id="hands">
-        <button data-h="right" class="sel">右手</button>
-        <button data-h="left">左手</button>
+      <div class="opts">
+        <div class="lbl">難度</div>
+        <div class="btns" id="diffs">
+          <button data-d="easy">簡單</button>
+          <button data-d="normal" class="sel">普通</button>
+          <button data-d="hard">困難</button>
+        </div>
+        <div class="lbl">慣用手</div>
+        <div class="btns" id="hands">
+          <button data-h="right" class="sel">右手</button>
+          <button data-h="left">左手</button>
+        </div>
+        <div class="lbl">局數</div>
+        <div class="btns" id="bestOf">
+          <button data-n="1">1 局</button>
+          <button data-n="3" class="sel">三戰兩勝</button>
+          <button data-n="5">五戰三勝</button>
+          <button data-n="7">七戰四勝</button>
+        </div>
       </div>
       <div class="howto">
-        球打到哪一邊，就<b>點那一側的螢幕往中間滑</b>。<br>
-        手指的位置就是球拍，球彈到你這邊後才能打。<br>
-        三戰兩勝，每局 11 分。建議<b>橫向</b>遊玩。
+        球打到哪一邊，就<b>點那一側的螢幕往中間滑</b>，手指的位置就是球拍。<br>
+        每局 11 分，建議<b>橫向</b>遊玩。
       </div>
       <button id="startBtn" class="main">開始比賽</button>
     </div>
@@ -230,7 +255,7 @@ const sfx = {
 // ---------- 遊戲狀態 ----------
 const S = {
   mode: 'menu',          // menu | play | pause | over
-  diff: 'normal', char: 'male', hand: 'right',
+  diff: 'normal', char: 'male', hand: 'right', bestOf: 3,
   phase: 'serveWait',    // serveWait | toss | aiServe | rally | pointOver
   ps: 0, as: 0, pg: 0, ag: 0, game: 1, firstServer: 'player', server: 'player', games: [],
   timer: 0, lastHitter: null, bounces: 0, netted: false, lastPower: 0.5,
@@ -473,7 +498,8 @@ function endOfPoint() {
   if (!isGameOver()) { S.phase = 'serveWait'; S.timer = 0.4; return; }
   if (S.ps > S.as) S.pg++; else S.ag++;
   S.games.push(S.ps + '-' + S.as);
-  if (S.pg === 2 || S.ag === 2) { matchOver(); return; }
+  const need = Math.ceil(S.bestOf / 2);   // 要贏幾局才算贏得比賽
+  if (S.pg === need || S.ag === need) { matchOver(); return; }
   S.game++; S.ps = 0; S.as = 0;
   S.firstServer = other(S.firstServer); S.server = S.firstServer;
   showMsg('GAME ' + S.game, '局數 ' + S.pg + ' - ' + S.ag, '#ffd166', 1.8);
@@ -1049,6 +1075,12 @@ document.querySelectorAll('#hands button').forEach(b => {
     S.hand = b.dataset.h;
     document.querySelectorAll('#hands button').forEach(x => x.classList.toggle('sel', x === b));
     paddle.init = false;
+  });
+});
+document.querySelectorAll('#bestOf button').forEach(b => {
+  b.addEventListener('click', () => {
+    S.bestOf = Number(b.dataset.n);
+    document.querySelectorAll('#bestOf button').forEach(x => x.classList.toggle('sel', x === b));
   });
 });
 
