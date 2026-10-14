@@ -55,6 +55,19 @@
   #goImg { height: min(30vh, 180px); image-rendering: pixelated; }
   #goScore { font-family: 'Press Start 2P', monospace; font-size: 22px; }
   #goSub { color: #cfd6ea; font-size: 14px; }
+  .overlay { touch-action: pan-y; }
+  #helpOv { background: rgba(7, 11, 26, .96); }
+  .help { max-width: 620px; text-align: left; font-size: 14px; line-height: 1.7; color: #dfe5f5; }
+  .help h1 { text-align: center; margin-bottom: 4px; }
+  .help h2 { font-size: 17px; color: #ffd166; margin: 16px 0 4px; }
+  .help ul { margin: 4px 0; padding-left: 20px; }
+  .help b { color: #9be7ff; }
+  .help .demo { display: block; width: min(100%, 320px); margin: 6px auto; }
+  .help .rate { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 6px 0; align-items: center; }
+  .help .rate span:nth-child(odd) { font-family: 'Press Start 2P', monospace; font-size: 11px; }
+  .help .r1 { color: #ffd166; } .help .r2 { color: #9be7ff; } .help .r3 { color: #ccc; }
+  .help .tip { background: #1d2850; border-left: 4px solid #ffd166; padding: 8px 12px; margin: 8px 0; border-radius: 4px; }
+  .helpBtn { background: transparent; border-color: #5a6890; font-size: 15px; padding: 8px 18px; }
   @media (max-height: 460px) {
     .overlay { gap: 8px; padding: 10px; }
     h1 { font-size: 20px; }
@@ -107,6 +120,7 @@
         每局 11 分，建議<b>橫向</b>遊玩。
       </div>
       <button id="startBtn" class="main">開始比賽</button>
+      <button class="helpBtn">📖 遊戲說明</button>
     </div>
   </div>
 </div>
@@ -114,7 +128,87 @@
 <div id="pauseOv" class="overlay hidden">
   <h1>暫停</h1>
   <button id="resumeBtn" class="main">繼續</button>
+  <button class="helpBtn">📖 遊戲說明</button>
   <button id="quitBtn">回主選單</button>
+</div>
+
+<div id="helpOv" class="overlay hidden">
+  <div class="help">
+    <h1>📖 遊戲說明</h1>
+
+    <h2>一、基本操作</h2>
+    <svg class="demo" viewBox="0 0 240 120" role="img" aria-label="從螢幕側邊往中間滑過球">
+      <rect x="1" y="1" width="238" height="118" rx="10" fill="#141c36" stroke="#3a4a70"/>
+      <polygon points="70,40 170,40 215,104 25,104" fill="#2459bf"/>
+      <line x1="120" y1="40" x2="120" y2="104" stroke="#f4f6ff" stroke-width="1"/>
+      <line x1="62" y1="52" x2="178" y2="52" stroke="#dfe4f5" stroke-width="3"/>
+      <circle cx="30" cy="80" r="15" fill="#d22d2d" stroke="#1a0a0a" stroke-width="2" opacity="0.85"/>
+      <path d="M30 80 Q 70 70 112 58" fill="none" stroke="#ffd166" stroke-width="3" stroke-dasharray="6 4"/>
+      <polygon points="112,58 101,57 106,66" fill="#ffd166"/>
+      <circle cx="62" cy="72" r="6" fill="#fff"/>
+      <text x="14" y="22" fill="#cfd6ea" font-size="11">手指按在球的旁邊 → 往中間滑過球</text>
+    </svg>
+    <ul>
+      <li>手指按在螢幕上的位置，就是球拍的位置。</li>
+      <li>對手的球<b>彈到你這邊的桌面之後</b>，手指從球的旁邊<b>滑過球</b>就會揮拍擊球。</li>
+      <li>只按著不動不會擊球，一定要滑動。</li>
+      <li>球打到左邊，就按螢幕左側往中間滑；打到右邊，就按右側往中間滑。</li>
+      <li>短球落在網前時，可以直接在桌子上方打，不用等球過來。</li>
+    </ul>
+
+    <h2>二、怎麼打出最好的球</h2>
+    <div class="rate">
+      <span class="r1">PERFECT</span><span>拍子中心正中球，落點最準</span>
+      <span class="r2">GOOD</span><span>稍微偏一點，落點會有些偏差</span>
+      <span class="r3">OK</span><span>用拍子邊緣碰到，落點亂，也容易掛網</span>
+    </div>
+    <ul>
+      <li><b>對準</b>：讓球拍中心正好掃過球。打中時畫面會顯示上面的評價。</li>
+      <li><b>速度</b>：滑得越快，球越快、落點越深（越靠近對手底線），對手越難接。</li>
+      <li><b>方向</b>：滑動的左右方向決定球往左或往右飛。往<b>斜上方</b>滑比較穩；完全橫著滑，會把球打向邊線附近。</li>
+      <li><b>時機</b>：在球飛到手指附近的那一刻滑過去。太早滑，球還沒到，拍子就已經離開了。</li>
+      <li><b>高度</b>：球掉到比桌面還低之前打。</li>
+    </ul>
+    <p class="tip">最佳擊球：拍子對準球，在球到的瞬間，往斜上方（對手的方向）快速滑過去。</p>
+
+    <h2>三、什麼情況容易掛網</h2>
+    <ul>
+      <li>拍子沒對準，只用邊緣擦到球。</li>
+      <li>滑得太慢、軟弱無力。</li>
+      <li>手指往下滑（往自己的方向切）。</li>
+      <li>球已經掉到比桌面還低才打。</li>
+      <li>就算打得很好，偶爾也會擦到網子：可能翻過去掉在對面網前（顯示「擦網!」），也可能掉回自己這邊。</li>
+    </ul>
+
+    <h2>四、什麼情況容易出界</h2>
+    <ul>
+      <li><b>沒對準又滑很快</b>：球容易飛太遠，超過對手的底線。</li>
+      <li><b>沒對準又完全橫著滑</b>：球容易打出邊線。</li>
+      <li>只要拍子中心對準球，就算全力揮拍也不會出界。</li>
+    </ul>
+
+    <h2>五、得分規則</h2>
+    <ul>
+      <li>你打出去的球，一定要落在對手那半邊的桌面。掛網、落在自己這邊、直接出界都算失分。</li>
+      <li>球要先在你這邊彈一次才能打（發球除外），而且要在它第二次落下（桌面或地板）之前打回去，不然就失分。</li>
+      <li>球落在桌子邊緣（擦邊）算有效。</li>
+      <li>每局 11 分；打到 10:10 之後，要領先 2 分才算贏這局。</li>
+      <li>每 2 分換人發球，10:10 之後每 1 分換一次；每一局換人先發球。</li>
+      <li>發球：球會往上拋，從旁邊滑過球就能直接打到對面。沒打到的話會重新拋球，不會失分。</li>
+      <li>局數可以在主選單選：1 局、三戰兩勝、五戰三勝或七戰四勝。</li>
+    </ul>
+
+    <h2>六、對手的球路</h2>
+    <ul>
+      <li><b>平擊</b>：最常見，彈起來很低，大約在桌面上方一點。</li>
+      <li><b>吊高球</b>：球飛得很高、彈得也高，等它落下來再打。</li>
+      <li><b>短球</b>：落在網前，第二跳還在桌上，要直接在桌子上方打。</li>
+      <li><b>擦邊</b>：打到桌子邊緣，球又低又快地彈開，很難接。</li>
+      <li><b>擦網</b>：擦過網子後掉在網前，要趕快在桌子上方打。</li>
+      <li>難度越高，對手跑得越快、回球越快，短球和擦邊也越多。</li>
+    </ul>
+  </div>
+  <button id="helpClose" class="main">知道了</button>
 </div>
 
 <div id="overOv" class="overlay hidden">
@@ -1117,6 +1211,16 @@ $('startBtn').addEventListener('click', startGame);
 $('againBtn').addEventListener('click', startGame);
 $('menuBtn').addEventListener('click', toMenu);
 $('quitBtn').addEventListener('click', toMenu);
+// 遊戲說明：從主選單或暫停畫面打開，關掉後回到原本的畫面
+let helpFrom = 'menuOv';
+document.querySelectorAll('.helpBtn').forEach(b => {
+  b.addEventListener('click', () => {
+    helpFrom = S.mode === 'pause' ? 'pauseOv' : 'menuOv';
+    show(helpFrom, false); show('helpOv', true);
+    $('helpOv').scrollTop = 0;
+  });
+});
+$('helpClose').addEventListener('click', () => { show('helpOv', false); show(helpFrom, true); });
 $('pause').addEventListener('click', () => { if (S.mode === 'play') { S.mode = 'pause'; show('pauseOv', true); } });
 $('resumeBtn').addEventListener('click', () => { S.mode = 'play'; show('pauseOv', false); last = performance.now(); });
 document.addEventListener('visibilitychange', () => {
