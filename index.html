@@ -126,9 +126,13 @@ const params = new URLSearchParams(location.search);
 const BOT = params.has('bot');
 
 const DIFF = {
-  easy:   { label: '簡單', T: 1.00, aimX: 0.35, err: 0.10, aiSpeed: 1.6, react: 0.25, miss: 0.10, missPow: 0.30 },
-  normal: { label: '普通', T: 0.82, aimX: 0.50, err: 0.06, aiSpeed: 2.3, react: 0.15, miss: 0.05, missPow: 0.20 },
-  hard:   { label: '困難', T: 0.64, aimX: 0.62, err: 0.03, aiSpeed: 3.2, react: 0.08, miss: 0.02, missPow: 0.10 },
+  // p：對手回球的球路機率（吊高球、短球、擦邊、擦網、失誤），其餘是貼著桌面的平擊
+  easy:   { label: '簡單', T: 1.00, aimX: 0.35, aiSpeed: 1.6, react: 0.25, miss: 0.10, missPow: 0.30,
+            p: { lob: 0.12, short: 0.06, edge: 0.02, cord: 0.02, err: 0.10 } },
+  normal: { label: '普通', T: 0.82, aimX: 0.50, aiSpeed: 2.3, react: 0.15, miss: 0.05, missPow: 0.20,
+            p: { lob: 0.10, short: 0.12, edge: 0.04, cord: 0.03, err: 0.06 } },
+  hard:   { label: '困難', T: 0.64, aimX: 0.62, aiSpeed: 3.2, react: 0.08, miss: 0.02, missPow: 0.10,
+            p: { lob: 0.06, short: 0.16, edge: 0.06, cord: 0.04, err: 0.03 } },
 };
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -217,6 +221,8 @@ const sfx = {
   paddle: z => { blip(700, 0.07, 0.35 * distVol(z), 'square'); blip(1500, 0.03, 0.15 * distVol(z)); },
   net: () => blip(220, 0.12, 0.25, 'sawtooth'),
   floor: () => blip(500, 0.05, 0.1, 'triangle'),
+  edge: () => blip(1700, 0.04, 0.3, 'square'),
+  cord: () => blip(320, 0.08, 0.22, 'triangle'),
   win: () => { blip(660, 0.12, 0.2); setTimeout(() => blip(990, 0.18, 0.2), 110); },
   lose: () => { blip(330, 0.15, 0.2); setTimeout(() => blip(220, 0.2, 0.2), 130); },
 };
@@ -235,21 +241,39 @@ const ball = { x: 0, y: 1, z: 0, vx: 0, vy: 0, vz: 0, visible: false };
 const ai = { x: 0, y: 1.0, z: TL + 0.25, attempted: false, react: 0 };
 const opp = { bx: 0.37, anim: 'idle', frame: 0, t: 0, hitT: -1, vs: 0, lastX: 0 };
 const trail = [], marks = [], popups = [];
-const botLog = [];
+const botLog = [], botShots = {}, botRecv = [];
+
+const E_TABLE = 0.88;   // 一般落桌的反彈係數；b.e 可以指定下一次落桌用的係數
 
 function integrate(b, h) {
   const pz = b.z, py = b.y;
   b.vy -= G * h;
   b.x += b.vx * h; b.y += b.vy * h; b.z += b.vz * h;
   if ((pz - NETZ) * (b.z - NETZ) < 0 && b.y < NETTOP + BR && b.y > TT && Math.abs(b.x) < NETHW) {
+    if (b.y > NETTOP + BR - 0.022 && Math.random() < 0.6) {   // 擦到網子上緣，球翻過去掉在網前
+      b.vz *= 0.35; b.vx *= 0.5; b.vy = 0.7 + Math.random() * 0.6;
+      return 'cord';
+    }
     b.z = pz; b.vz = -b.vz * 0.15; b.vx *= 0.4; b.vy = Math.min(b.vy, 0) * 0.3;
     return 'net';
   }
-  if (b.vy < 0 && b.y - BR <= TT && py - BR >= TT - 1e-6 && Math.abs(b.x) <= HW && b.z >= 0 && b.z <= TL) {
-    b.y = TT + BR;
-    if (-b.vy < 0.5) { b.vy = 0; return null; }
-    b.vy = -b.vy * 0.88; b.vx *= 0.97; b.vz *= 0.97;
-    return 'table';
+  if (b.vy < 0 && b.y - BR <= TT && py - BR >= TT - 1e-6) {
+    const ax = Math.abs(b.x);
+    const onTable = ax <= HW && b.z >= 0 && b.z <= TL;
+    const nearEdge = ax <= HW + BR && b.z >= -BR && b.z <= TL + BR &&
+      (ax >= HW - 0.01 || b.z <= 0.01 || b.z >= TL - 0.01);
+    if ((onTable || nearEdge) && -b.vy < 0.5) { b.y = TT + BR; b.vy = 0; return null; }   // 在桌面上滾動
+    if (nearEdge) {   // 擦邊：球貼著桌邊彈開，又低又快
+      b.y = TT + BR; b.vy = -b.vy * 0.25; b.e = null;
+      if (ax >= HW - 0.01) b.vx += Math.sign(b.x) * 0.8;
+      return 'edge';
+    }
+    if (onTable) {
+      b.y = TT + BR;
+      b.vy = -b.vy * (b.e != null ? b.e : E_TABLE); b.e = null;
+      b.vx *= 0.97; b.vz *= 0.97;
+      return 'table';
+    }
   }
   if (b.y < BR && b.vy < 0) {
     b.y = BR; b.vy = -b.vy * 0.55; b.vx *= 0.85; b.vz *= 0.85;
@@ -258,27 +282,57 @@ function integrate(b, h) {
   return null;
 }
 
-function hitBall(tx, tz, T) {
+// 讓球飛 T 秒後落在 (tx, tz)，並確保過網時比網子高 clear 公尺；回傳實際飛行時間
+function hitBall(tx, tz, T, clear) {
   const ty = TT + BR;
   for (let i = 0; i < 12; i++) {
     const vz = (tz - ball.z) / T, vy = (ty - ball.y + 0.5 * G * T * T) / T;
     const tn = (NETZ - ball.z) / vz;
     const yn = ball.y + vy * tn - 0.5 * G * tn * tn;
-    if (yn > NETTOP + BR + 0.03) break;
+    if (yn > NETTOP + BR + clear) break;
     T *= 1.08;
   }
   ball.vx = (tx - ball.x) / T;
   ball.vz = (tz - ball.z) / T;
   ball.vy = (ty - ball.y + 0.5 * G * T * T) / T;
+  ball.e = null;
+  return T;
 }
 
-function playerShot(power, dirX, offset, sx, sy) {
+// 讓球在 tn 秒後打到網子所在平面的高度 yNet（用來做擦網或掛網）
+function hitNet(x, yNet, tn) {
+  ball.vx = (x - ball.x) / tn;
+  ball.vz = (NETZ - ball.z) / tn;
+  ball.vy = (yNet - ball.y + 0.5 * G * tn * tn) / tn;
+  ball.e = null;
+}
+
+// 調整下一次落桌的反彈，讓球到玩家擊球點（底線後 0.2 公尺）時只比桌面高 h
+function lowBounce(tz, T, h) {
+  const vyLand = Math.abs(ball.vy - G * T), vz2 = Math.abs(ball.vz) * 0.97;
+  const t2 = Math.max(0.05, (tz + 0.2) / vz2);
+  const vyUp = (h + 0.5 * G * t2 * t2) / t2;
+  ball.e = clamp(vyUp / vyLand, 0.3, 0.92);
+}
+
+function popAtBall(text, color) {
+  const p = proj(ball.x, ball.y, ball.z);
+  if (p) popups.push({ text, x: p.x * PX, y: p.y * PX + 30, t: 0, color });
+}
+
+function playerShot(power, dirX, dirY, offset, sx, sy) {
   let tz = 1.95 + 0.6 * power;
   let tx = dirX * 0.5 + ball.x * 0.1;
   const err = 0.04 + offset * offset * 0.22;
   tx += rand(-err, err); tz += rand(-err, err);
-  hitBall(tx, tz, 0.98 - 0.46 * power);
-  S.lastHitter = 'player'; S.bounces = 0; S.netted = false; S.lastPower = power; S.phase = 'rally';
+  const T = 0.98 - 0.46 * power;
+  // 打偏、揮太慢、往下切、或球已經掉到桌面以下，都比較容易掛網
+  const pNet = 0.03 + offset * offset * 0.25 + (power < 0.12 ? 0.12 : 0) + Math.max(0, dirY) * 0.12 + (ball.y < TT ? 0.06 : 0);
+  const r = Math.random();
+  if (r < pNet) hitNet(tx * 0.9, NETTOP - rand(0.02, 0.08), T * 0.5);
+  else if (r < pNet + 0.04) hitNet(tx * 0.9, NETTOP + BR - 0.012, T * 0.5);
+  else hitBall(tx, tz, T, 0.03);
+  S.lastHitter = 'player'; S.bounces = 0; S.netted = false; S.edged = false; S.lastPower = power; S.phase = 'rally';
   ai.attempted = false; ai.react = DIFF[S.diff].react;
   popups.push({ text: offset < 0.3 ? 'PERFECT!' : offset < 0.65 ? 'GOOD' : 'OK', x: sx, y: sy, t: 0,
     color: offset < 0.3 ? '#ffd166' : offset < 0.65 ? '#9be7ff' : '#ccc' });
@@ -289,20 +343,42 @@ function playerShot(power, dirX, offset, sx, sy) {
 
 function aiShot(serve) {
   const d = DIFF[S.diff];
-  let tx = rand(-1, 1) * d.aimX, tz = rand(0.3, 1.05);
-  if (serve) { tx *= 0.6; tz = rand(0.45, 0.95); }
-  else if (Math.random() < d.err) {
-    if (Math.random() < 0.5) tx = (Math.random() < 0.5 ? -1 : 1) * (HW + rand(0.04, 0.3));
-    else tz = -rand(0.05, 0.4);
+  const T0 = d.T * rand(0.9, 1.1) * (serve ? 1.15 : 1);
+  let tx = rand(-1, 1) * d.aimX * (serve ? 0.6 : 1);
+  let kind = 'drive';
+  if (!serve) {
+    let r = Math.random();
+    for (const k of ['lob', 'short', 'edge', 'cord', 'err']) { if (r < d.p[k]) { kind = k; break; } r -= d.p[k]; }
   }
-  hitBall(tx, tz, d.T * rand(0.9, 1.1) * (serve ? 1.2 : 1));
-  S.lastHitter = 'ai'; S.bounces = 0; S.netted = false; S.phase = 'rally';
+  if (kind === 'err') {   // 失誤：掛網、打出邊線或打太長
+    const q = Math.random();
+    if (q < 0.4) hitNet(tx * 0.8, NETTOP - rand(0.02, 0.08), T0 * 0.55);
+    else if (q < 0.7) hitBall((Math.random() < 0.5 ? -1 : 1) * (HW + rand(0.05, 0.3)), rand(0.3, 0.9), T0, 0.03);
+    else hitBall(tx, -rand(0.1, 0.4), T0, 0.03);
+  } else if (kind === 'cord') {
+    hitNet(tx * 0.8, NETTOP + BR - 0.012, T0 * 0.55);
+  } else if (kind === 'lob') {
+    hitBall(tx, rand(0.2, 0.6), rand(1.15, 1.35), 0.1);
+  } else if (kind === 'short') {   // 短球：落在網前，第二跳還在桌上
+    hitBall(tx * 0.8, rand(0.95, 1.15), T0 * rand(1.0, 1.15), 0.03);
+    ball.e = rand(0.4, 0.55);
+  } else {   // 平擊（含擦邊）：落桌後彈得低
+    let tz = rand(0.15, 0.75);
+    if (kind === 'edge') {
+      if (Math.random() < 0.5) tx = (tx < 0 ? -1 : 1) * (HW - 0.003);
+      else tz = 0.004;
+    }
+    const T = hitBall(tx, tz, T0, 0.03);
+    lowBounce(tz, T, rand(0.1, 0.3));
+  }
+  if (BOT) botShots[kind] = (botShots[kind] || 0) + 1;
+  S.lastHitter = 'ai'; S.bounces = 0; S.netted = false; S.edged = false; S.phase = 'rally';
   oppSwing();
   sfx.paddle(ball.z);
 }
 
 function aiHitReady(b) {
-  return b.vz > 0 && (b.z >= TL + 0.12 || (b.vy < 0 && b.y < TT + 0.3 && b.z > NETZ + 0.25));
+  return b.vz > 0 && (b.z >= TL + 0.12 || (b.vy < 0 && b.y < TT + 0.3 && b.z > NETZ + 0.12));
 }
 
 function predictAIHit() {
@@ -334,7 +410,7 @@ function updateAI(dt) {
   if (S.phase === 'rally' && S.lastHitter === 'player' && S.bounces === 1 && !ai.attempted && aiHitReady(ball)) {
     ai.attempted = true;
     const reach = Math.abs(ai.x - ball.x) < 0.26 && ball.y > TT - 0.1;
-    const missChance = d.miss + d.missPow * S.lastPower + (Math.abs(ball.x) > HW ? 0.12 : 0);
+    const missChance = d.miss + d.missPow * S.lastPower + (Math.abs(ball.x) > HW ? 0.12 : 0) + (S.edged ? 0.6 : 0);
     if (reach && Math.random() > missChance) aiShot(false);
     else oppSwing();   // 揮空
   }
@@ -417,10 +493,14 @@ function ruleOut() {
 }
 
 function onEvent(ev) {
-  if (ev === 'table') {
-    sfx.table(ball.z);
+  if (ev === 'table' || ev === 'edge') {
+    if (ev === 'edge') { sfx.edge(); if (S.phase === 'rally') { S.edged = true; popAtBall('擦邊!', '#ffb347'); } }
+    else sfx.table(ball.z);
     marks.push({ x: ball.x, z: ball.z, t: 0 });
     if (S.phase === 'rally') ruleTable(ball.z < NETZ ? 'player' : 'ai');
+  } else if (ev === 'cord') {
+    sfx.cord();
+    if (S.phase === 'rally') popAtBall('擦網!', '#ffb347');
   } else if (ev === 'net') {
     sfx.net();
     if (S.phase === 'rally') S.netted = true;
@@ -485,14 +565,16 @@ const hitRadius = () => Math.max(38, Math.min(W, H) * 0.1);   // CSS px，等於
 
 function canPlayerHit() {
   if (S.phase === 'toss') return true;
-  return S.phase === 'rally' && S.lastHitter === 'ai' && S.bounces === 1 && ball.z < 0.5 && ball.z > -0.6;
+  // 彈到自己這邊後，在桌子上方（短球）或底線後都可以打
+  return S.phase === 'rally' && S.lastHitter === 'ai' && S.bounces === 1 && ball.z < NETZ - 0.05 && ball.z > -0.6;
 }
 
 function checkPlayerHit() {
   if (!ball.visible || !canPlayerHit()) return;
   if (BOT) {
-    if ((S.phase === 'toss' && ball.vy < 0) || (S.phase === 'rally' && ball.z < 0.15)) {
-      playerShot(rand(0.3, 0.9), rand(-0.8, 0.8), rand(0, 0.7), W / 2, H / 2);
+    if ((S.phase === 'toss' && ball.vy < 0) || (S.phase === 'rally' && (ball.z < 0.15 || (ball.vy < 0 && ball.y < TT + 0.06)))) {
+      if (S.phase === 'rally') botRecv.push(Math.round((ball.y - TT) * 100));
+      playerShot(rand(0.3, 0.9), rand(-0.8, 0.8), rand(-0.5, 0.5), rand(0, 0.7), W / 2, H / 2);
     }
     return;
   }
@@ -505,7 +587,7 @@ function checkPlayerHit() {
   const R = hitRadius() + VBR * bp.s * PX;
   const d = distSeg(bx, by, tp.lx, tp.ly, tp.x, tp.y);
   if (d > R) return;
-  playerShot(clamp((sp - 0.35 * m) / (3.0 * m), 0, 1), v.x / sp, d / R, bx, by);
+  playerShot(clamp((sp - 0.35 * m) / (3.0 * m), 0, 1), v.x / sp, v.y / sp, d / R, bx, by);
 }
 
 // ---------- 更新 ----------
@@ -990,7 +1072,7 @@ function matchOver() {
   $('goScore').textContent = S.pg + ' - ' + S.ag;
   $('goSub').textContent = '各局比分：' + S.games.join('、');
   show('overOv', true); show('pause', false);
-  if (BOT) document.body.dataset.result = JSON.stringify({ pg: S.pg, ag: S.ag, games: S.games, log: botLog });
+  if (BOT) document.body.dataset.result = JSON.stringify({ pg: S.pg, ag: S.ag, games: S.games, shots: botShots, recv: botRecv, log: botLog });
 }
 
 function toMenu() {
