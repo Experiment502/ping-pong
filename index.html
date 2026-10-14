@@ -59,21 +59,10 @@
   #goSub { color: #cfd6ea; font-size: 14px; }
   .overlay { touch-action: pan-y; }
   #helpOv { background: rgba(7, 11, 26, .96); }
-  .hands { display: flex; gap: 28px; }
-  .hand {
-    display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 26px;
-    background: #121a36; border: 3px solid #2a3560; border-radius: 14px; font-size: 16px;
-  }
-  .hand .fist { position: relative; font-size: 56px; line-height: 1; }
-  .hand .ballDot {
-    position: absolute; right: -6px; top: 4px; width: 22px; height: 22px; border-radius: 50%;
-    background: #fff; box-shadow: inset -3px -3px 0 #c9ceda, 0 0 10px rgba(255,255,255,.6);
-  }
-  .hand.win { border-color: #5ddf9a; background: #173a2a; }
-  .hand.lose { border-color: #ff5b5b; background: #3a1720; }
-  .hand:disabled { opacity: 1; color: #fff; }
-  .hands.shake .fist { animation: shake .14s 4 alternate; }
-  @keyframes shake { from { transform: translateX(-6px) rotate(-10deg); } to { transform: translateX(6px) rotate(10deg); } }
+  #tossCv { position: static; inset: auto; width: auto; height: min(48vh, 320px); image-rendering: pixelated; cursor: pointer; }
+  .hands { display: flex; gap: 16px; }
+  .hand { min-width: 110px; }
+  .hand:disabled { opacity: .45; }
   #tossChoice .main { font-size: 17px; padding: 11px 22px; }
   .tossMsg { max-width: 380px; font-size: 15px; line-height: 1.6; color: #e8ecff; }
   .help { max-width: 620px; text-align: left; font-size: 14px; line-height: 1.7; color: #dfe5f5; }
@@ -168,10 +157,11 @@
 
 <div id="tossOv" class="overlay hidden">
   <h1>猜球</h1>
-  <div class="tossMsg" id="tossText">裁判把球藏在其中一隻手裡。猜對的人可以決定先發球，還是先接發球。</div>
+  <div class="tossMsg" id="tossText">裁判準備猜球…</div>
+  <canvas id="tossCv" width="220" height="196" aria-label="裁判藏球動畫"></canvas>
   <div class="hands" id="tossHands">
-    <button class="hand" data-h="L"><span class="fist">✊</span><span>左邊</span></button>
-    <button class="hand" data-h="R"><span class="fist">✊</span><span>右邊</span></button>
+    <button class="hand" data-h="L">👈 左邊</button>
+    <button class="hand" data-h="R">右邊 👉</button>
   </div>
   <div class="btns hidden" id="tossChoice">
     <button class="main" data-f="player">我先發球</button>
@@ -1496,6 +1486,7 @@ function startGame(first) {
   Object.assign(ai, { x: 0, y: 1.0, attempted: false });
   ball.visible = false;
   show('menuOv', false); show('overOv', false); show('pauseOv', false); show('tossOv', false); show('pause', true);
+  toss.phase = 'off';
   const el = document.documentElement;
   if (!BOT && el.requestFullscreen && !document.fullscreenElement) el.requestFullscreen().catch(() => {});
 }
@@ -1519,48 +1510,128 @@ function toMenu() {
   show('pauseOv', false); show('overOv', false); show('pause', false); show('menuOv', true);
 }
 
-// ---------- 猜球：猜對的人決定先發球或先接發球 ----------
-let tossBall = 'L', tossFirst = 'player', tossDone = false;
+// ---------- 猜球：裁判藏球的動畫，猜對的人決定先發球或先接發球 ----------
+const refImg = new Image();
+refImg.src = 'assets/referee.png';
+// 裁判圖（assets/referee.png）的切格：位置、頭頂與頭的中心（對齊用）、手的位置
+const REF = {
+  idle0: { x: 2, y: 2, w: 88, h: 155, headTop: 0, headCx: 43.2 },
+  idle1: { x: 92, y: 2, w: 88, h: 155, headTop: 0, headCx: 43.2 },
+  idle2: { x: 182, y: 2, w: 88, h: 156, headTop: 0, headCx: 43.3 },
+  idle3: { x: 272, y: 2, w: 89, h: 156, headTop: 0, headCx: 43.7 },
+  timeout: { x: 363, y: 2, w: 115, h: 162, headTop: 0, headCx: 56.9, ball: [57.4, 60] },
+  gameend: { x: 480, y: 2, w: 139, h: 162, headTop: 12, headCx: 68.8, palmL: [13.0, 23.8], palmR: [125.5, 24.2] },
+  gameend_fist: { x: 621, y: 2, w: 139, h: 162, headTop: 12, headCx: 68.8 },
+};
+const TV = { HEAD: 40, CX: 110, DESK: 135 };   // 動畫畫布上：裁判頭頂的 y、頭的中心 x、桌面的 y
+const tcv = $('tossCv'), tctx = tcv.getContext('2d');
+const toss = { phase: 'off', t: 0, pick: null };
+const TOSS_TEXT = { idle: '裁判準備猜球…', show: '裁判拿起球給你看…', hide: '把球藏起來…', fists: '球在哪一隻手裡？點左邊或右邊', shake: '打開手…' };
+let tossBall = 'L', tossFirst = 'player';
+
+function tossPhase(p) {
+  toss.phase = p; toss.t = 0;
+  if (TOSS_TEXT[p]) $('tossText').textContent = TOSS_TEXT[p];
+  document.querySelectorAll('.hand').forEach(h => { h.disabled = p !== 'fists'; });
+}
+// 每一格更新：坐著 → 拿球給你看 → 藏到桌子下 → 舉起兩個拳頭 →（你猜）→ 搖一搖 → 打開
+function updateToss(dt) {
+  if (toss.phase === 'off') return;
+  toss.t += dt;
+  const t = toss.t;
+  if (toss.phase === 'idle' && t > 1.0) tossPhase('show');
+  else if (toss.phase === 'show' && t > 1.2) tossPhase('hide');
+  else if (toss.phase === 'hide' && t > 1.3) tossPhase('fists');
+  else if (toss.phase === 'shake' && t > 0.7) { tossPhase('reveal'); revealToss(); }
+  drawToss();
+}
+function refPoint(name, pt) { const f = REF[name]; return [TV.CX - f.headCx + pt[0], TV.HEAD - f.headTop + pt[1]]; }
+function drawTossBall(x, y, r) {
+  circle(tctx, x, y, r + 1, '#151b2b');
+  circle(tctx, x, y, r, '#d9dde8');
+  circle(tctx, x - r * 0.15, y - r * 0.15, r * 0.8, '#ffffff');
+}
+function drawUmpireDesk() {
+  const c = tctx, x = 14, y = TV.DESK, w = 192, h = tcv.height - TV.DESK - 2;
+  c.fillStyle = '#0a1122'; c.fillRect(x - 2, y - 2, w + 4, h + 4);
+  c.fillStyle = '#4068c4'; c.fillRect(x, y, w, 5);
+  c.fillStyle = '#1c2f6a'; c.fillRect(x, y + 5, w, h - 5);
+  c.fillStyle = '#22397e'; c.fillRect(x + 6, y + 11, w - 12, h - 17);
+  // 桌子前面的翻牌計分板
+  let cx = TV.CX - 32;
+  c.font = '10px ' + FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
+  for (const [col, cw] of [['#c8282e', 22], ['#e8c22a', 16], ['#2a4fc4', 22]]) {
+    c.fillStyle = '#0a0a12'; c.fillRect(cx - 1, y + 15, cw + 2, 26);
+    c.fillStyle = col; c.fillRect(cx, y + 16, cw, 24);
+    c.fillStyle = '#ffffff'; c.fillText('0', cx + cw / 2, y + 29);
+    cx += cw + 3;
+  }
+}
+function drawToss() {
+  const c = tctx, t = toss.t;
+  c.clearRect(0, 0, tcv.width, tcv.height);
+  c.imageSmoothingEnabled = false;
+  const gl = c.createRadialGradient(TV.CX, 85, 10, TV.CX, 85, 120);
+  gl.addColorStop(0, 'rgba(120,150,255,0.28)'); gl.addColorStop(1, 'rgba(120,150,255,0)');
+  c.fillStyle = gl; c.fillRect(0, 0, tcv.width, tcv.height);
+  if (refImg.complete && refImg.naturalWidth) {
+    let name = 'idle0', ox = 0, oy = 0;
+    if (toss.phase === 'idle') name = 'idle' + (Math.floor(t * 5) % 4);
+    else if (toss.phase === 'show') name = 'timeout';
+    else if (toss.phase === 'hide') { name = 'idle' + (Math.floor(t * 12) % 4); ox = Math.round(Math.sin(t * 30) * 2); }
+    else if (toss.phase === 'fists') { name = 'gameend_fist'; oy = Math.round(Math.sin(t * 4) * 1.5); }
+    else if (toss.phase === 'shake') { name = 'gameend_fist'; ox = Math.round(Math.sin(t * 45) * 3); }
+    else if (toss.phase === 'reveal') name = 'gameend';
+    const f = REF[name];
+    c.drawImage(refImg, f.x, f.y, f.w, f.h, Math.round(TV.CX - f.headCx + ox), Math.round(TV.HEAD - f.headTop + oy), f.w, f.h);
+    if (toss.phase === 'show') {   // 球拿在胸前
+      const [bx, by] = refPoint('timeout', REF.timeout.ball);
+      drawTossBall(bx, by - Math.abs(Math.sin(t * 4)) * 3, 6);
+    }
+    if (toss.phase === 'reveal') {   // 打開手：球在其中一隻手上，你選的那隻手畫圈
+      const [bx, by] = refPoint('gameend', tossBall === 'L' ? REF.gameend.palmL : REF.gameend.palmR);
+      drawTossBall(bx, by, 7);
+      const [px, py] = refPoint('gameend', toss.pick === 'L' ? REF.gameend.palmL : REF.gameend.palmR);
+      c.strokeStyle = toss.pick === tossBall ? '#5ddf9a' : '#ff5b5b'; c.lineWidth = 2;
+      c.beginPath(); c.arc(px, py, 19, 0, Math.PI * 2); c.stroke();
+    }
+  }
+  drawUmpireDesk();
+}
+
 function openToss() {
   if (S.practice) { startGame(); return; }
   initAudio();
   tossBall = Math.random() < 0.5 ? 'L' : 'R';
-  tossDone = false;
-  $('tossText').textContent = '裁判把球藏在其中一隻手裡。猜對的人可以決定先發球，還是先接發球。';
-  document.querySelectorAll('.hand').forEach(h => {
-    h.disabled = false; h.classList.remove('win', 'lose');
-    h.querySelector('.fist').textContent = '✊';
-  });
-  show('tossChoice', false); show('tossGo', false);
+  toss.pick = null;
+  show('tossHands', true); show('tossChoice', false); show('tossGo', false);
   show('menuOv', false); show('overOv', false); show('tossOv', true);
+  tossPhase('idle');
 }
-document.querySelectorAll('.hand').forEach(b => {
-  b.addEventListener('click', () => {
-    if (tossDone) return;
-    tossDone = true;
-    document.querySelectorAll('.hand').forEach(h => { h.disabled = true; });
-    $('tossHands').classList.add('shake');
-    setTimeout(() => {   // 搖一搖之後打開雙手
-      $('tossHands').classList.remove('shake');
-      document.querySelectorAll('.hand').forEach(h => {
-        const has = h.dataset.h === tossBall;
-        h.querySelector('.fist').innerHTML = has ? '✋<span class="ballDot"></span>' : '✋';
-        if (h === b) h.classList.add(has ? 'win' : 'lose');
-      });
-      if (b.dataset.h === tossBall) {
-        $('tossText').textContent = '猜對了！你要先發球，還是先接發球？';
-        show('tossChoice', true);
-      } else {
-        tossFirst = Math.random() < 0.5 ? 'ai' : 'player';
-        $('tossText').textContent = '猜錯了…對手選擇' + (tossFirst === 'ai' ? '先發球。' : '先接發球，由你先發球。');
-        show('tossGo', true);
-      }
-    }, 650);
-  });
+function pickToss(side) {
+  if (toss.phase !== 'fists') return;
+  toss.pick = side;
+  tossPhase('shake');
+}
+function revealToss() {
+  show('tossHands', false);
+  if (toss.pick === tossBall) {
+    $('tossText').textContent = '猜對了！你要先發球，還是先接發球？';
+    show('tossChoice', true);
+  } else {
+    tossFirst = Math.random() < 0.5 ? 'ai' : 'player';
+    $('tossText').textContent = '猜錯了…對手選擇' + (tossFirst === 'ai' ? '先發球。' : '先接發球，由你先發球。');
+    show('tossGo', true);
+  }
+}
+document.querySelectorAll('.hand').forEach(b => b.addEventListener('click', () => pickToss(b.dataset.h)));
+tcv.addEventListener('click', e => {   // 也可以直接點畫面上的拳頭
+  const r = tcv.getBoundingClientRect();
+  pickToss(e.clientX - r.left < r.width / 2 ? 'L' : 'R');
 });
 document.querySelectorAll('#tossChoice button').forEach(b => b.addEventListener('click', () => startGame(b.dataset.f)));
 $('tossGo').addEventListener('click', () => startGame(tossFirst));
-$('tossBack').addEventListener('click', () => { show('tossOv', false); show('menuOv', true); });
+$('tossBack').addEventListener('click', () => { toss.phase = 'off'; show('tossOv', false); show('menuOv', true); });
 
 $('startBtn').addEventListener('click', openToss);
 $('againBtn').addEventListener('click', openToss);
@@ -1593,6 +1664,7 @@ function frame(t) {
   if (S.mode === 'play') update(dt);
   setCrowd(S.mode === 'play' ? (S.practice ? 0.35 : 1) : 0);
   updateOpp(dt);
+  updateToss(dt);
   draw(dt);
   requestAnimationFrame(frame);
 }
