@@ -97,6 +97,42 @@
   .danger.small { font-size: 14px; padding: 8px 14px; }
   .tabs button.sel { background: #4b6cff; }
   .bigscore { text-align: center; font-family: 'Press Start 2P', monospace; font-size: 24px; }
+  .stat.dur i b { background: linear-gradient(90deg, #ff9b4a, #5ddf9a); }
+  #pauseItems { flex-direction: column; align-items: center; }
+  #pauseItems:empty { display: none; }
+  /* ---------- 地圖操作 ---------- */
+  #worldUI { position: fixed; inset: 0; pointer-events: none; }
+  #dpad {
+    position: fixed; left: max(14px, env(safe-area-inset-left)); bottom: 14px; width: 132px; height: 132px; pointer-events: auto;
+    border-radius: 50%; background: rgba(10, 14, 30, .35); touch-action: none;
+  }
+  #dpad span {
+    position: absolute; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+    border-radius: 10px; background: rgba(255, 255, 255, .22); color: #fff; font-size: 18px; border: 2px solid rgba(255, 255, 255, .35);
+  }
+  #dpad span.on { background: rgba(255, 209, 102, .7); }
+  #dpad [data-d="up"] { left: 44px; top: 0; } #dpad [data-d="down"] { left: 44px; bottom: 0; }
+  #dpad [data-d="left"] { left: 0; top: 44px; } #dpad [data-d="right"] { right: 0; top: 44px; }
+  #btnA {
+    position: fixed; right: max(18px, env(safe-area-inset-right)); bottom: 34px; width: 74px; height: 74px; border-radius: 50%;
+    pointer-events: auto; font-family: 'Press Start 2P', monospace; font-size: 20px; padding: 0;
+    background: rgba(217, 68, 58, .85); border: 3px solid rgba(255, 255, 255, .6); touch-action: none;
+  }
+  #btnMenu {
+    position: fixed; right: max(12px, env(safe-area-inset-right)); top: 10px; width: 46px; height: 46px; padding: 0; border-radius: 10px;
+    pointer-events: auto; font-size: 22px; background: rgba(8, 12, 28, .7); border: 2px solid rgba(255, 255, 255, .35);
+  }
+  #dlg {
+    position: fixed; left: 50%; transform: translateX(-50%); bottom: 12px; width: min(640px, calc(100% - 330px)); min-width: 260px;
+    min-height: 64px; box-sizing: border-box; padding: 12px 16px 18px; pointer-events: auto; touch-action: none;
+    background: #fdfbf3; color: #1a1a2a; border: 4px solid #2a3560; border-radius: 12px; font-size: 16px; line-height: 1.55;
+    box-shadow: 0 4px 0 rgba(0, 0, 0, .35);
+  }
+  .dlgNext { position: absolute; right: 12px; bottom: 4px; color: #d9443a; font-size: 12px; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  @media (max-aspect-ratio: 1/1) {
+    #dlg { width: calc(100% - 24px); bottom: 170px; }
+  }
   .overlay { touch-action: pan-y; }
   #helpOv { background: rgba(7, 11, 26, .96); }
   #tossCv { position: static; inset: auto; width: auto; height: min(48vh, 320px); image-rendering: pixelated; cursor: pointer; }
@@ -218,9 +254,19 @@
   <div id="careerBox" class="career"></div>
 </div>
 
+<div id="worldUI" class="hidden">
+  <div id="dpad" aria-label="方向鍵">
+    <span data-d="up">▲</span><span data-d="left">◀</span><span data-d="right">▶</span><span data-d="down">▼</span>
+  </div>
+  <button id="btnA" aria-label="A 鍵">A</button>
+  <button id="btnMenu" aria-label="選單">☰</button>
+  <div id="dlg" class="hidden"><div id="dlgText"></div><div class="dlgNext">▼</div></div>
+</div>
+
 <div id="pauseOv" class="overlay hidden">
   <h1>暫停</h1>
   <button id="resumeBtn" class="main">繼續</button>
+  <div id="pauseItems" class="btns"></div>
   <div class="btns">
     <button class="helpBtn">📖 遊戲說明</button>
     <button class="soundBtn helpBtn2">🔊 音效：開</button>
@@ -338,22 +384,32 @@
       <li>畫面下方會提示這種球該怎麼接。想結束練習，按上方中間的暫停，再選「回主選單」。</li>
     </ul>
 
-    <h2>九、球王之路（生涯模式）</h2>
+    <h2>九、球王之路（故事模式）</h2>
     <ul>
-      <li>在主選單按<b>🏆 球王之路</b>。第一次玩要選角色和新手球拍：速度型、控制型或旋轉型。</li>
-      <li>比賽分四級：<b>社區比賽 → 縣市賽 → 全國賽 → 國際對抗賽</b>。每一級的「關鍵賽」奪冠，就會解鎖下一級。</li>
-      <li>參加比賽要付報名費，拿到冠軍或亞軍有獎金；中途被淘汰，報名費就沒了。「社區友誼賽」是免費的，獎金不夠時可以去打。</li>
-      <li>每個對手打法不同：削球手、拉球手、高球手、側旋怪、快攻手、全能型，比賽前會告訴你怎麼應付。</li>
-      <li>獎金可以在<b>球具店</b>買新的底板和膠皮，買了會自動裝上，也可以在「我的球具」自由搭配：
+      <li>在主選單按<b>🏆 球王之路</b>。你是光明國小的學生，故事從你第一次上桌球課的早上開始。</li>
+      <li><b>操作</b>：左下的方向鍵走路，<b>A</b> 鍵跟人說話、調查東西，右上的 <b>☰</b> 是選單（我的球具、存檔、回主選單）。電腦上可以用方向鍵和 Z 鍵。</li>
+      <li><b>第一支球拍</b>：去學校走廊右邊的桌球教室找陳教練，選速度型、控制型或旋轉型。</li>
+      <li><b>路人挑戰</b>：有球拍之後，走到別人看得到的地方，對方頭上會跳出「！」走過來挑戰你。贏了拿獎金，輸了要付錢給對方。也可以按 A 主動找他們比賽。</li>
+      <li><b>學校的關卡</b>：打敗三位老師後，訓導主任才會接受挑戰；打敗主任後，去操場找校長。打敗校長，就能代表學校去市區中心的<b>市立體育館</b>，跟裡面的報名櫃檯報名比賽。</li>
+      <li><b>賽事</b>：校際賽 → 地區比賽 → 全國比賽 → 亞洲區比賽。每一級的「關鍵賽」奪冠，就會解鎖下一級。報名要付報名費，拿到冠軍或亞軍有獎金。</li>
+      <li><b>球拍耐久度</b>：比賽中每一分都會磨損球拍（失分磨損比較多），比賽畫面左上角看得到。
+        <ul>
+          <li>耐久度歸零，那支球拍就壞掉不見了，會自動換下一支。</li>
+          <li>所有球拍都壞了，這場直接算輸，而且會被送到市區中心的商店。錢不夠的話，老闆會送你一支練習拍。</li>
+          <li>市區中心的<b>恢復中心</b>和桌球教室的陳教練，都可以免費幫你修好所有球拍。</li>
+          <li>商店賣「修補膠帶」和「球拍保養組」，比賽中按暫停就能使用。</li>
+        </ul>
+      </li>
+      <li><b>球具</b>：商店可以買新球拍和膠皮，在選單的「我的球具」換球拍、換膠皮：
         <ul>
           <li>速度：球飛得比較快，對手比較難接。</li>
           <li>旋轉：打出的拉球、切球、側旋更強。</li>
           <li>控制：落點比較準，比較不會掛網。</li>
           <li>甜區：擊球的判定範圍比較大，也比較容易打出 PERFECT。</li>
+          <li>耐久：好的球拍比較耐打。</li>
         </ul>
       </li>
-      <li>比賽中按暫停選「棄權」，這場算輸。</li>
-      <li>進度會自動存在這支手機的瀏覽器裡。換手機或清除瀏覽器資料，進度就會不見。</li>
+      <li><b>存檔</b>：會自動存檔；跟家裡的媽媽說話、在床上休息或在選單按「存檔」也可以。進度存在這支手機的瀏覽器裡，換手機或清除瀏覽器資料就會不見。</li>
     </ul>
     <p>主選單和暫停畫面的「🔊 音效」可以開關聲音。</p>
   </div>
@@ -372,6 +428,9 @@
 </div>
 
 <script src="js/game.js"></script>
+<script src="js/maps.js"></script>
 <script src="js/career.js"></script>
+<script src="js/chars.js"></script>
+<script src="js/world.js"></script>
 </body>
 </html>

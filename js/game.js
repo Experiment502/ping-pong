@@ -497,6 +497,12 @@ const isGameOver = () => (S.ps >= 11 || S.as >= 11) && Math.abs(S.ps - S.as) >= 
 function showMsg(msg, sub, color, t) { S.msg = msg; S.sub = sub; S.msgColor = color; S.msgT = t || 1.4; }
 
 function point(winner, kind) {
+  // 生涯模式：每一分都會磨損球拍，全部壞掉就直接輸
+  if (S.careerMatch && careerOnPoint(winner)) {
+    S.mode = 'over'; ball.visible = false; show('pause', false);
+    careerMatchEnd(false, true);
+    return;
+  }
   if (S.practice) {
     if (winner === 'player' && S.lastHitter === 'ai') { S.phase = 'pointOver'; S.timer = 0.6; return; }   // 發球機的球沒進，重發
     practiceResult(winner === 'player', kind);
@@ -1042,6 +1048,18 @@ function drawHUD() {
     scoreBox(pad, b.y, bw, b.h, u, '#173a8f', '#5d8cff', 'PLAYER', S.ps, playing && S.server === 'player', false);
     scoreBox(W - pad - bw, b.y, bw, b.h, u, '#6e1420', '#ff5b5b', S.oppName || 'COMPUTER', S.as, playing && S.server === 'ai', true);
   }
+  if (S.careerMatch) {   // 生涯模式：球拍耐久度
+    const r = careerHudInfo();
+    if (r) {
+      const x = pad, y = b.y + b.h + 8 * u, w2 = bw, k = r.dur / r.max;
+      ctx.fillStyle = 'rgba(5,8,20,0.75)'; ctx.fillRect(x, y, w2, 20 * u);
+      ctx.fillStyle = '#26305a'; ctx.fillRect(x + 4 * u, y + 13 * u, w2 - 8 * u, 4 * u);
+      ctx.fillStyle = k > 0.5 ? '#5ddf9a' : k > 0.25 ? '#ffd166' : '#ff5b5b';
+      ctx.fillRect(x + 4 * u, y + 13 * u, (w2 - 8 * u) * k, 4 * u);
+      ctx.fillStyle = '#e8ecff'; ctx.font = `bold ${Math.round(10 * u)}px system-ui, sans-serif`; ctx.textAlign = 'left';
+      ctx.fillText(`🏓 ${r.name}  ${r.dur}/${r.max}`, x + 4 * u, y + 7 * u);
+    }
+  }
   ctx.fillStyle = '#05080f'; ctx.fillRect(b.x - 2 * u, b.y - 2 * u, b.w + 4 * u, b.h + 4 * u);
   ctx.fillStyle = '#34405e'; ctx.fillRect(b.x, b.y, b.w, b.h);
   ctx.fillStyle = '#0f1730'; ctx.fillRect(b.x + 2 * u, b.y + 2 * u, b.w - 4 * u, b.h - 4 * u);
@@ -1356,10 +1374,17 @@ document.querySelectorAll('.helpBtn').forEach(b => {
   });
 });
 $('helpClose').addEventListener('click', () => { show('helpOv', false); show(helpFrom, true); });
-$('pause').addEventListener('click', () => { if (S.mode === 'play') { S.mode = 'pause'; show('pauseOv', true); } });
+$('pause').addEventListener('click', () => {
+  if (S.mode !== 'play') return;
+  S.mode = 'pause'; show('pauseOv', true);
+  if (typeof careerPauseItems === 'function') careerPauseItems();
+});
 $('resumeBtn').addEventListener('click', () => { S.mode = 'play'; show('pauseOv', false); last = performance.now(); });
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && S.mode === 'play') { S.mode = 'pause'; show('pauseOv', true); }
+  if (document.hidden && S.mode === 'play') {
+    S.mode = 'pause'; show('pauseOv', true);
+    if (typeof careerPauseItems === 'function') careerPauseItems();
+  }
 });
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 200));
@@ -1374,7 +1399,7 @@ function frame(t) {
   setCrowd(S.mode === 'play' ? (S.practice ? 0.35 : 1) : 0);
   updateOpp(dt);
   updateToss(dt);
-  draw(dt);
+  if (S.mode === 'world') drawWorld(dt); else draw(dt);
   requestAnimationFrame(frame);
 }
 if (BOT || params.has('auto')) startGame();
