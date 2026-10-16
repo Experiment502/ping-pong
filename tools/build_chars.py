@@ -101,7 +101,115 @@ FRAMES = {
         'left': [(1, 2, True), (1, 1, True), (1, 2, True)],
     },
 }   # 女選手的圖沒有背面，往上走時先用正面
-ORDER = ['down', 'left', 'right', 'up']   # 圖集裡每個角色的四行
+ORDER = ['down', 'left', 'right', 'up']
+# 原圖的側面走路每一格都是「前面那隻手往前擺」，走起來只有一隻手在動。
+# 所以側面的第 3 格把上半身（手臂那一段）左右翻轉：前後手互換，跟第 1 格交替就像雙手在擺。
+# 拿球拍的角色不做，不然球拍會在兩隻手之間換來換去。
+NO_ARM_SWING = set(KEYS.values())   # 目前全部關掉：翻轉手臂做出來的格子看起來不自然
+# 正面、背面原圖三格幾乎一樣的角色：用站姿做出兩個跨步格（左右腳輪流抬起、手反方向擺）
+SYNTH_FRONT_WALK = {'player_m': ['down', 'up'], 'player_f': ['down']}
+# 原圖沒有背面的角色：借別人的背面換顏色。(借誰, 色相要轉幾度)
+BORROW_BACK = {'player_f': ('player_m', 140)}
+
+
+def shift_region(a, y0, y1, x0, x1, dy):
+    """把 a[y0:y1, x0:x1] 這一塊上下移動 dy 像素（空出來的地方變透明）"""
+    blk = a[y0:y1, x0:x1].copy()
+    a[y0:y1, x0:x1] = 0
+    t0, t1 = max(0, y0 + dy), min(a.shape[0], y1 + dy)
+    a[t0:t1, x0:x1] = np.where(blk[t0 - y0 - dy:t1 - y0 - dy, :, 3:4] > 0, blk[t0 - y0 - dy:t1 - y0 - dy], a[t0:t1, x0:x1])
+
+
+def front_steps(stand):
+    """正面或背面的站姿 → 兩個跨步格"""
+    al = stand[..., 3] > 0
+    ys = np.nonzero(al.any(axis=1))[0]
+    top, bot = ys.min(), ys.max()
+    h = bot - top + 1
+    xs = np.nonzero(al.any(axis=0))[0]
+    cx = (xs.min() + xs.max()) // 2
+    wid = xs.max() - xs.min()
+    leg0 = top + int(h * 0.80)
+    arm0, arm1 = top + int(h * 0.50), top + int(h * 0.80)
+    arm_l, arm_r = xs.min() + int(wid * 0.22), xs.max() - int(wid * 0.22)
+    out = []
+    for side in (0, 1):
+        a = stand.copy()
+        lx0, lx1 = (0, cx) if side == 0 else (cx, a.shape[1])
+        shift_region(a, leg0, bot + 1, lx0, lx1, -5)                  # 抬起一隻腳
+        ax0, ax1 = (0, arm_l) if side == 0 else (arm_r + 1, a.shape[1])
+        bx0, bx1 = (arm_r + 1, a.shape[1]) if side == 0 else (0, arm_l)
+        shift_region(a, arm0, arm1, ax0, ax1, 3)                      # 同一邊的手往後（往下）
+        shift_region(a, arm0, arm1, bx0, bx1, -3)                     # 另一邊的手往前（往上）
+        out.append(a)
+    return out
+
+
+def hue_shift(a, deg):
+    """把藍色系的衣服、鞋子轉成別的顏色（皮膚、頭髮、黑色不動）"""
+    import colorsys
+    a = a.copy()
+    r, g, b = a[..., 0] / 255.0, a[..., 1] / 255.0, a[..., 2] / 255.0
+    blue = (a[..., 3] > 0) & (b > r + 0.08) & (b > g)
+    for y, x in zip(*np.nonzero(blue)):
+        hh, ll, ss = colorsys.rgb_to_hls(r[y, x], g[y, x], b[y, x])
+        rr, gg, bb = colorsys.hls_to_rgb((hh + deg / 360.0) % 1, ll, ss)
+        a[y, x, :3] = (int(rr * 255), int(gg * 255), int(bb * 255))
+    return a
+
+
+# 側面：原圖的「站姿」其實是跨大步，停下來像定格在走路中途，手也只有一隻在動。
+# 所以主角側面改成：跨步（原圖站姿那格）→ 雙腳併攏（程式做出來）→ 跨步，手臂保持自然下垂。
+SIDE_PASS_WALK = {'player_m', 'player_f'}
+
+
+def legs_together(a, front_right, k=0.7):
+    """跨步的姿勢 → 雙腳併攏（兩隻腳往中間靠，前腳畫在上面）"""
+    a = a.copy()
+    al = a[..., 3] > 0
+    ys = np.nonzero(al.any(axis=1))[0]
+    top, bot = ys.min(), ys.max()
+    y0 = top + int((bot - top + 1) * 0.80)
+    cols = al[bot - 6:bot + 1].any(axis=0)                 # 用腳底那幾行找兩隻腳
+    xs = np.nonzero(cols)[0]
+    gaps = [x for x in range(xs.min(), xs.max()) if not cols[x]]
+    split = (gaps[0] + gaps[-1]) // 2 if gaps else (xs.min() + xs.max()) // 2
+    lw, rw = np.nonzero(cols[:split])[0], np.nonzero(cols[split:])[0] + split
+    if not len(lw) or not len(rw):
+        return a
+    d = int(round((rw.mean() - lw.mean()) * k / 2))
+    band = a[y0:bot + 1].copy()
+    a[y0:bot + 1] = 0
+    left, right = band.copy(), band.copy()
+    left[:, split:] = 0
+    right[:, :split] = 0
+    left, right = np.roll(left, d, axis=1), np.roll(right, -d, axis=1)
+    for part in ((left, right) if front_right else (right, left)):
+        m = part[..., 3] > 0
+        a[y0:bot + 1][m] = part[m]
+    return a
+
+
+BUILT = {}   # 已經處理好的角色：key → {方向: [3 格]}
+
+
+def swap_arms(a):
+    a = a.copy()
+    al = a[..., 3] > 0
+    ys = np.nonzero(al.any(axis=1))[0]
+    top, bot = ys.min(), ys.max()
+    h = bot - top
+    y0, y1 = top + int(h * 0.51), top + int(h * 0.78)    # 脖子下面到腰
+    xs = np.nonzero(al[y0:y0 + 4])[1]                    # 用肩膀那幾行找身體中心
+    c = (xs.min() + xs.max()) / 2
+    band = a[y0:y1].copy()
+    new = np.zeros_like(band)
+    for x in range(a.shape[1]):
+        nx = int(round(2 * c - x))
+        if 0 <= nx < a.shape[1]:
+            new[:, nx] = band[:, x]
+    a[y0:y1] = new
+    return a   # 圖集裡每個角色的四行
 
 
 names = sorted(f[:-4] for f in os.listdir(SRC) if f.endswith('.png'))
@@ -131,6 +239,19 @@ for i, name in enumerate(names):
         if d in FRAMES.get(key, {}):
             frames = [rows[r_][c_][:, ::-1].copy() if f_ else rows[r_][c_] for r_, c_, f_ in FRAMES[key][d]]
             flip = False
+        if d in SYNTH_FRONT_WALK.get(key, []) and frames[1] is not None:
+            frames = [None, frames[1], None]
+            frames[0], frames[2] = front_steps(frames[1])
+        if d == 'up' and key in BORROW_BACK and BORROW_BACK[key][0] in BUILT:
+            src_key, deg = BORROW_BACK[key]
+            frames = [hue_shift(f, deg) for f in BUILT[src_key]['up']]
+            flip = False
+        BUILT.setdefault(key, {})[d] = [f if not flip else f[:, ::-1].copy() for f in frames]
+        if d in ('left', 'right') and key in SIDE_PASS_WALK and frames[1] is not None:
+            faces_right = (d == 'right') != flip            # 還沒翻轉的圖是朝哪邊
+            frames = [frames[1], legs_together(frames[1], faces_right), frames[1]]
+        elif d in ('left', 'right') and key not in NO_ARM_SWING:
+            frames[2] = swap_arms(frames[2] if frames[2] is not None else frames[0])   # 腳步保留第 3 格自己的
         for c in range(3):
             f = frames[c]
             if f is None: continue
