@@ -221,16 +221,18 @@ m.trainer('boss_pri', 11, 3, 'down', '校長', 'male', 'allround', 0.38, rng=3, 
           after='太精彩了！你就代表我們學校，去市區中心的體育館參加校際賽吧！',
           blocked='校長：同學好！聽說訓導主任很想跟你比一場喔。')
 
-# ----- 8. 桌球體育館（一樓走廊走到底） -----
-m = new(8, '桌球體育館', 'v2_tt_gym.png', 15, 9, {
-    **{r: [(0, 13)] for r in (7, 8)}, 3: [(1, 13)], **{r: [1, 2, 6, 10, 13] for r in (4, 5, 6)}}, inside=True)
-m.obj('ttable', 3, 4, 3, 3, text='桌球桌。今天也要好好練習！')
-m.obj('ttable', 7, 4, 3, 3, text='桌球桌。今天也要好好練習！')
-m.obj('ttable', 11, 4, 2, 3, text='桌球桌。今天也要好好練習！')
-m.npc(1, 3, 'right', '桌球陳教練', 'male', [], role='coach')
-m.trainer('rival1', 2, 7, 'up', '勁敵 韓宇', 'male', 'allround', 0.12, rng=3, story=True,
+# ----- 8. 桌球體育館（一樓走廊走到底）：半格地圖，球桌之間的走道剛好對齊圖片 -----
+m = new(8, '桌球體育館', 'v2_tt_gym.png', 30, 18, {
+    **{r: [(2, 27)] for r in (4, 5, 6)},                         # 球桌上面（舞台前面）的走道
+    **{r: [2, 3, 4, 12, 19, 26, 27] for r in range(7, 14)},      # 球桌左右兩邊的走道
+    **{r: [(0, 27)] for r in range(14, 18)}}, inside=True, cell=0.5)
+m.obj('ttable', 6, 7, 6, 7, text='桌球桌。今天也要好好練習！')
+m.obj('ttable', 13, 7, 6, 7, text='桌球桌。今天也要好好練習！')
+m.obj('ttable', 20, 7, 6, 7, text='桌球桌。今天也要好好練習！')
+m.npc(3, 6, 'right', '桌球陳教練', 'male', [], role='coach')
+m.trainer('rival1', 4, 14, 'up', '勁敵 韓宇', 'male', 'allround', 0.12, rng=6, story=True,
           intro='我也剛拿到球拍！第一場比賽，就跟你打！', after='哼，這次算你贏，我會變得更強的！')
-m.trainer('tt2', 13, 3, 'down', '桌球社學姊', 'female', 'looper', 0.16, rng=2,
+m.trainer('tt2', 27, 6, 'down', '桌球社學姊', 'female', 'looper', 0.16, rng=4,
           intro='歡迎加入桌球社！學姊來陪你練習。', after='進步得真快！')
 
 # ======================= 10. 市區道路（東側） =======================
@@ -346,8 +348,8 @@ for x in (7, 8):
 for x in (13, 14):
     link(7, x, 2, 20, 14, 3, 'up')
 for y in (3, 4, 5):
-    link(7, 15, y, 8, 1, 7, 'right')
-for y in (7, 8):
+    link(7, 15, y, 8, 2, 15, 'right')
+for y in range(14, 18):
     link(8, 0, y, 7, 14, 4, 'left')
 # 二樓走廊：教室、樓梯
 for x in (2, 3):
