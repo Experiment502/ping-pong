@@ -152,7 +152,7 @@ m.trainer('boss_dir', 23, 4, 'left', '訓導主任', 'male', 'chopper', 0.30, rn
 
 # ======================= 6. 三年二班 =======================
 m = new(6, '三年二班', '06_classroom.png', 14, 11, {
-    3: [(2, 5), (8, 12)], **{r: [4, 9, 12] for r in range(4, 9)}, 9: [(2, 11)], **INDOOR_DOOR}, inside=True)
+    3: [(2, 5), (8, 12)], **{r: [4, 7, 9, 12] for r in range(4, 9)}, 9: [(2, 11)], **INDOOR_DOOR}, inside=True)
 m.obj('blackboard', 3, 0, 8, 3, text='黑板上寫著：「今天的值日生：你」')
 m.trainer('t_lin', 2, 3, 'right', '班導 林老師', 'female', 'allround', 0.20, rng=3, teacher=True,
           intro='上課前，老師先考考你的球技！', after='很好，你有認真練習。')

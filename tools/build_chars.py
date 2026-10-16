@@ -120,29 +120,74 @@ def shift_region(a, y0, y1, x0, x1, dy):
     a[t0:t1, x0:x1] = np.where(blk[t0 - y0 - dy:t1 - y0 - dy, :, 3:4] > 0, blk[t0 - y0 - dy:t1 - y0 - dy], a[t0:t1, x0:x1])
 
 
-def front_steps(stand):
-    """正面或背面的站姿 → 兩個跨步格"""
-    al = stand[..., 3] > 0
+def hip_row(a):
+    """腿的上緣：從腳底往上，兩隻腳之間還有空隙的列都算腿"""
+    al = a[..., 3] > 0
     ys = np.nonzero(al.any(axis=1))[0]
     top, bot = ys.min(), ys.max()
-    h = bot - top + 1
-    xs = np.nonzero(al.any(axis=0))[0]
-    cx = (xs.min() + xs.max()) // 2
-    wid = xs.max() - xs.min()
-    leg0 = top + int(h * 0.80)
-    arm0, arm1 = top + int(h * 0.50), top + int(h * 0.80)
-    arm_l, arm_r = xs.min() + int(wid * 0.22), xs.max() - int(wid * 0.22)
-    out = []
-    for side in (0, 1):
-        a = stand.copy()
-        lx0, lx1 = (0, cx) if side == 0 else (cx, a.shape[1])
-        shift_region(a, leg0, bot + 1, lx0, lx1, -5)                  # 抬起一隻腳
-        ax0, ax1 = (0, arm_l) if side == 0 else (arm_r + 1, a.shape[1])
-        bx0, bx1 = (arm_r + 1, a.shape[1]) if side == 0 else (0, arm_l)
-        shift_region(a, arm0, arm1, ax0, ax1, 3)                      # 同一邊的手往後（往下）
-        shift_region(a, arm0, arm1, bx0, bx1, -3)                     # 另一邊的手往前（往上）
-        out.append(a)
+    y = bot
+    while y > top + (bot - top) // 2:
+        xs = np.nonzero(al[y])[0]
+        if not len(xs):
+            break
+        runs = 1 + int(np.sum(np.diff(xs) > 1))
+        if runs < 2:
+            break
+        y -= 1
+    if y + 1 > bot - 4:                                   # 兩腳貼在一起（例如背面）：用身高比例
+        return top + int((bot - top) * 0.84), bot
+    return y + 1, bot
+
+
+def feet_split(a, bot):
+    al = a[..., 3] > 0
+    cols = al[bot - 6:bot + 1].any(axis=0); xs = np.nonzero(cols)[0]
+    gaps = [x for x in range(xs.min(), xs.max()) if not cols[x]]
+    split = (gaps[0] + gaps[-1]) // 2 if gaps else (xs.min() + xs.max()) // 2
+    lw, rw = np.nonzero(cols[:split])[0], np.nonzero(cols[split:])[0] + split
+    return split, lw, rw
+
+def shift1d(row, d):
+    """一列像素左右移動 d 格，超出邊界的丟掉（不繞回另一邊）"""
+    out = np.zeros_like(row)
+    if d > 0: out[d:] = row[:-d]
+    elif d < 0: out[:d] = row[-d:]
+    else: out[:] = row
     return out
+
+
+def legs_together(a, front_right, k=0.75):
+    """兩隻腳往中間靠：短褲下緣不動，越靠近腳底靠得越多（輪廓不會斷）"""
+    a = a.copy(); y0, bot = hip_row(a)
+    split, lw, rw = feet_split(a, bot)
+    if not len(lw) or not len(rw): return a
+    D = (rw.mean() - lw.mean()) * k / 2
+    band = a[y0:bot + 1].copy(); a[y0:bot + 1] = 0
+    n = bot + 1 - y0
+    for i in range(n):
+        d = int(round(D * min(1.0, (i + 1) / 3)))         # 短褲下緣往下 3 列就整隻腳一起平移，鞋子不變形
+        row = band[i]; L = row.copy(); L[split:] = 0; R = row.copy(); R[:split] = 0
+        L = shift1d(L, d); R = shift1d(R, -d)
+        out = a[y0 + i]
+        for part in ((L, R) if front_right else (R, L)):
+            m = part[:, 3] > 0; out[m] = part[m]
+    return a
+
+def lift_leg(a, left, lift):
+    """抬起一隻腳：那隻腿從短褲下緣往下壓短 lift 像素（大腿根部不動）"""
+    a = a.copy(); y0, bot = hip_row(a)
+    split, lw, rw = feet_split(a, bot)
+    x0, x1 = (0, split) if left else (split, a.shape[1])
+    seg = a[y0:bot + 1, x0:x1].copy(); n = seg.shape[0]; m = n - lift
+    a[y0:bot + 1, x0:x1] = 0
+    for i in range(m):
+        a[y0 + i, x0:x1] = seg[min(n - 1, int(i * n / m))]
+    return a
+
+
+def front_steps(stand):
+    """正面或背面的站姿 → 兩個跨步格（左右腳輪流抬起，大腿根部不動，輪廓不會斷）"""
+    return lift_leg(stand, True, 6), lift_leg(stand, False, 6)
 
 
 def hue_shift(a, deg):
@@ -161,33 +206,6 @@ def hue_shift(a, deg):
 # 側面：原圖的「站姿」其實是跨大步，停下來像定格在走路中途，手也只有一隻在動。
 # 所以主角側面改成：跨步（原圖站姿那格）→ 雙腳併攏（程式做出來）→ 跨步，手臂保持自然下垂。
 SIDE_PASS_WALK = {'player_m', 'player_f'}
-
-
-def legs_together(a, front_right, k=0.7):
-    """跨步的姿勢 → 雙腳併攏（兩隻腳往中間靠，前腳畫在上面）"""
-    a = a.copy()
-    al = a[..., 3] > 0
-    ys = np.nonzero(al.any(axis=1))[0]
-    top, bot = ys.min(), ys.max()
-    y0 = top + int((bot - top + 1) * 0.80)
-    cols = al[bot - 6:bot + 1].any(axis=0)                 # 用腳底那幾行找兩隻腳
-    xs = np.nonzero(cols)[0]
-    gaps = [x for x in range(xs.min(), xs.max()) if not cols[x]]
-    split = (gaps[0] + gaps[-1]) // 2 if gaps else (xs.min() + xs.max()) // 2
-    lw, rw = np.nonzero(cols[:split])[0], np.nonzero(cols[split:])[0] + split
-    if not len(lw) or not len(rw):
-        return a
-    d = int(round((rw.mean() - lw.mean()) * k / 2))
-    band = a[y0:bot + 1].copy()
-    a[y0:bot + 1] = 0
-    left, right = band.copy(), band.copy()
-    left[:, split:] = 0
-    right[:, :split] = 0
-    left, right = np.roll(left, d, axis=1), np.roll(right, -d, axis=1)
-    for part in ((left, right) if front_right else (right, left)):
-        m = part[..., 3] > 0
-        a[y0:bot + 1][m] = part[m]
-    return a
 
 
 BUILT = {}   # 已經處理好的角色：key → {方向: [3 格]}
@@ -249,7 +267,7 @@ for i, name in enumerate(names):
         BUILT.setdefault(key, {})[d] = [f if not flip else f[:, ::-1].copy() for f in frames]
         if d in ('left', 'right') and key in SIDE_PASS_WALK and frames[1] is not None:
             faces_right = (d == 'right') != flip            # 還沒翻轉的圖是朝哪邊
-            frames = [frames[1], legs_together(frames[1], faces_right), frames[1]]
+            frames = [frames[1], legs_together(frames[1], faces_right, 0.6), frames[1]]
         elif d in ('left', 'right') and key not in NO_ARM_SWING:
             frames[2] = swap_arms(frames[2] if frames[2] is not None else frames[0])   # 腳步保留第 3 格自己的
         for c in range(3):
