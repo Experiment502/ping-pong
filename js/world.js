@@ -516,7 +516,7 @@ function palette(name, char, d) {
   if (d && d.role === 'nurse') { p.shirt = '#f48fb1'; p.cap = '#ffffff'; }
   if (d && d.role === 'clerk') p.shirt = '#3aa35a';
   if (/外送|警衛/.test(name)) p.cap = /外送/.test(name) ? '#e53935' : '#2a3a6a';
-  if (/阿翔/.test(name)) { p.shirt = '#e8562a'; p.hair = '#1d1d1d'; }
+  if (/韓宇/.test(name)) { p.shirt = '#e8562a'; p.hair = '#1d1d1d'; }
   return p;
 }
 function playerPal() {

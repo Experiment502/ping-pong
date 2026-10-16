@@ -125,7 +125,7 @@ m.npc(8, 5, 'left', '媽媽', 'female', ['今天是第一次上桌球課，別�
 m = new(3, '韓家', 'v2_rival_1f.png', 12, 10, W({
     3: [(4, 9)], 4: [(3, 9)], 5: [3, 4, 5, 8, 9], 6: [3, 4, 9], 7: [3, 4, 9],
     8: [(3, 10)], 9: [5, 6, 7]}, STAIRS_1F), inside=True)
-m.npc(9, 4, 'down', '阿翔的姊姊', 'female', ['阿翔？他一大早就跑去學校的桌球體育館了。', '他說今天一定要第一個拿到球拍。'])
+m.npc(9, 4, 'down', '韓宇的姊姊', 'female', ['韓宇？他一大早就跑去學校的桌球體育館了。', '他說今天一定要第一個拿到球拍。'])
 
 # ----- 16. 韓家二樓 -----
 m = new(16, '韓家二樓', 'v2_rival_2f.png', 10, 10, W({
@@ -228,7 +228,7 @@ m.obj('ttable', 3, 4, 3, 3, text='桌球桌。今天也要好好練習！')
 m.obj('ttable', 7, 4, 3, 3, text='桌球桌。今天也要好好練習！')
 m.obj('ttable', 11, 4, 2, 3, text='桌球桌。今天也要好好練習！')
 m.npc(1, 3, 'right', '桌球陳教練', 'male', [], role='coach')
-m.trainer('rival1', 2, 7, 'up', '勁敵 阿翔', 'male', 'allround', 0.12, rng=3, story=True,
+m.trainer('rival1', 2, 7, 'up', '勁敵 韓宇', 'male', 'allround', 0.12, rng=3, story=True,
           intro='我也剛拿到球拍！第一場比賽，就跟你打！', after='哼，這次算你贏，我會變得更強的！')
 m.trainer('tt2', 13, 3, 'down', '桌球社學姊', 'female', 'looper', 0.16, rng=2,
           intro='歡迎加入桌球社！學姊來陪你練習。', after='進步得真快！')
@@ -376,12 +376,12 @@ MAP_VERSION = 2   # 地圖大改時加一：舊存檔的位置會換回起點
 
 # 每個人在地圖上用哪一張走路圖（js/chars.js 裡的名字）
 SPRITES = {
-    '鄰居小孩 小志': 'boy', '晨跑的阿伯': 'grandpa', '鄰居阿姨': 'woman', '媽媽': 'woman', '阿翔的姊姊': 'student_f',
+    '鄰居小孩 小志': 'boy', '晨跑的阿伯': 'grandpa', '鄰居阿姨': 'woman', '媽媽': 'woman', '韓宇的姊姊': 'student_f',
     '上班族 王先生': 'man', '高中生 小婷': 'student_f', '外送員 阿峰': 'student_m',
     '一年級學弟': 'boy', '跳繩女孩': 'girl', '警衛伯伯': 'grandpa',
     '美術老師': 'woman_teacher', '三年級學長': 'tt_m', '糾察隊長': 'student_f', '訓導主任': 'director',
     '班導 林老師': 'woman_teacher', '同學 小胖': 'student_m', '班長 小雯': 'student_f',
-    '桌球陳教練': 'man', '勁敵 阿翔': 'student_m', '桌球社學姊': 'tt_f',
+    '桌球陳教練': 'man', '勁敵 韓宇': 'student_m', '桌球社學姊': 'tt_f',
     '體育老師': 'man', '田徑隊 小飛': 'student_m', '足球隊 阿德': 'boy', '校長': 'principal',
     '補習班學生': 'student_f', '騎腳踏車的大哥': 'man', '公園阿嬤': 'grandma',
     '街頭藝人': 'man', '逛街的姊姊': 'woman', '市民': 'man', '恢復中心的姊姊': 'woman', '店長': 'man',
