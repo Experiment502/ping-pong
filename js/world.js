@@ -132,7 +132,7 @@ function updateWorld(dt) {
   if (world.cut) { updateCut(dt); return; }
   if (world.paused || world.dialog || world.lock) return;
   if (world.moving) {
-    world.t += dt * SPEED;
+    world.t += dt * SPEED / cellOf();
     if (world.t >= 1) { world.t = 1; arrive(); }
     if (world.moving) return;
   }
@@ -203,7 +203,7 @@ function updateCut(dt) {
   const c = world.cut, n = c.n;
   c.t += dt;
   if (c.phase === 'bang') { if (c.t > 0.75) c.phase = 'walk'; return; }
-  if (n.moving) { n.t += dt * SPEED; if (n.t >= 1) n.moving = false; return; }
+  if (n.moving) { n.t += dt * SPEED / cellOf(); if (n.t >= 1) n.moving = false; return; }
   if (Math.abs(n.x - world.x) + Math.abs(n.y - world.y) > 1) {   // 走到你面前
     const [dx, dy] = DIRV[n.dir];
     Object.assign(n, { fx: n.x, fy: n.y, x: n.x + dx, y: n.y + dy, moving: true, t: 0, step: (n.step || 0) ^ 1 });
@@ -350,18 +350,22 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => { const d = KEYDIR[e.key]; if (d) keysHeld[d] = false; });
 
 // ---------- 畫面 ----------
+// 地圖格子的大小（cell = 0.5 是半格地圖）：畫面上一格多大、每秒走幾格
+const cellOf = () => (world.m && world.m.cell) || 1;
+const CT = () => TILE * cellOf();
+// 人物畫在哪裡：回傳一個 16x16 的框的左上角，人物的腳站在格子底部中間
 function personPx(o) {
   const x = o.moving ? o.fx + (o.x - o.fx) * o.t : o.x, y = o.moving ? o.fy + (o.y - o.fy) * o.t : o.y;
-  return { x: Math.round(x * TILE), y: Math.round(y * TILE) };
+  return { x: Math.round((x + 0.5) * CT() - 8), y: Math.round((y + 1) * CT() - 16) };
 }
 function drawWorld(dt) {
   updateWorld(dt);
   const m = world.m;
   if (!m) return;
   // 每格在畫面上多大：室外看得到約 10.5 格，室內盡量整個房間都看得到
-  const view = m.inside ? Math.max(7, m.h) : 10.5;
+  const view = m.inside ? Math.max(7, m.h * cellOf()) : 10.5;
   const k = Math.min(W, H) / (TILE * view);
-  const vw = W / k, vh = H / k, mw = m.w * TILE, mh = m.h * TILE;
+  const vw = W / k, vh = H / k, mw = m.w * CT(), mh = m.h * CT();
   const p = personPx(world);
   const camX = mw <= vw ? (mw - vw) / 2 : clamp(p.x + 8 - vw / 2, 0, mw - vw);
   const camY = mh <= vh ? (mh - vh) / 2 : clamp(p.y + 8 - vh / 2, 0, mh - vh);
