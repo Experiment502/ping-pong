@@ -76,13 +76,14 @@ function worldHideUI() { show('worldUI', false); padDir = null; }
 function worldEnter(isNew) {
   S.mode = 'world';
   Object.assign(world, { paused: false, lock: false, cut: null, fade: null, flash: null, dialog: null });
+  if (save.mapv !== WORLD_MAP_VERSION) { save.pos = Object.assign({}, WORLD_SPAWN); save.mapv = WORLD_MAP_VERSION; }   // 地圖改版：舊存檔從家裡重新出發
   const p = save.pos && WORLD_MAPS[save.pos.map] ? save.pos : WORLD_SPAWN;
   const [x, y] = freeSpot(p.map, p.x, p.y);
   loadMap(p.map, x, y, p.dir);
   show('pause', false); show('menuOv', false); careerHide(); worldShowUI();
   if (isNew) {
     worldSay(['媽媽：「早安！今天是你第一次上桌球課的日子喔！」',
-      '媽媽：「學校在東邊。到了學校，走廊中間那扇門就是桌球教室。」',
+      '媽媽：「出門往右走，經過公園就是學校。桌球體育館在教學樓一樓走廊的盡頭。」',
       '（用左下的方向鍵走路，按 A 可以跟人說話、調查東西，右上的 ☰ 是選單）']);
   } else if (!hasRacket() && save.story.racket) {
     worldSay(['你沒有球拍了，去市區中心的商店買一支吧。']);
@@ -257,7 +258,7 @@ function talk(n) {
   const d = n.d;
   if (n.type === 'trainer') {
     if (save.beaten[d.id]) return worldSay([`${d.name}：「${d.after}」`]);
-    if (!hasRacket()) return worldSay([`${d.name}：「你沒有球拍耶，${save.story.racket ? '先去市區中心的商店買一支吧！' : '先去學校的桌球教室上課吧！'}」`]);
+    if (!hasRacket()) return worldSay([`${d.name}：「你沒有球拍耶，${save.story.racket ? '先去市區中心的商店買一支吧！' : '先去學校的桌球體育館上課吧！'}」`]);
     if (!reqMet(d)) return worldSay([d.blocked || `${d.name}：「……」`]);
     if (d.spot) return worldSay([`${d.name}：「${d.intro}」`], () => startTrainerBattle(n));
     // 一般路人：先問你要不要比賽，可以拒絕
@@ -284,7 +285,7 @@ function interactObj(o) {
 }
 function coachTalk() {
   if (!save.story.racket) {
-    return worldSay(['陳教練：「你就是新來的同學吧？歡迎來到桌球教室！」', '陳教練：「上課的第一件事，就是挑一支自己的球拍。」'],
+    return worldSay(['陳教練：「你就是新來的同學吧？歡迎來到桌球體育館！」', '陳教練：「上課的第一件事，就是挑一支自己的球拍。」'],
       () => { world.paused = true; worldHideUI(); ui.pickStarter = null; careerShow('starter'); });
   }
   if (!hasRacket()) return worldSay(['陳教練：「你的球拍呢？壞掉了？去市區中心的商店買一支吧。」']);
