@@ -413,15 +413,14 @@ function drawWorld(dt) {
     const key = e.me ? (save && save.char === 'female' ? 'player_f' : 'player_m') : o.sp;
     if (!drawSprite(ctx, e.x, e.y, o.dir, frame, key)) drawPerson(ctx, e.x, e.y, o.dir, frame, e.me ? playerPal() : o.pal);
   }
-  // 可以找他比賽的路人：頭上有一個小球拍（打贏過就不顯示）
-  if (save && !world.cut) {
-    const bob = Math.round(Math.sin(world.time * 3) * 1.5);
+  // 可以找他比賽的路人：頭上有一個桌球相框圖示（打贏過就不顯示）
+  if (save && !world.cut && iconImg.complete && iconImg.naturalWidth) {
+    const bob = Math.round(Math.sin(world.time * 3) * 1.5), sz = 11;
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
     for (const n of world.npcs) {
       if (n.type !== 'trainer' || n.d.spot || save.beaten[n.d.id] || !reqMet(n.d)) continue;
-      const q = personPx(n), x = q.x + 8, y = q.y - SPRITE_H + 10 + bob;
-      ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.arc(x, y, 4.2, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#d9443a'; ctx.beginPath(); ctx.arc(x - 0.6, y - 0.6, 2.4, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#b07a45'; ctx.fillRect(x + 0.6, y + 0.8, 1.4, 2.4);
+      const q = personPx(n);
+      ctx.drawImage(iconImg, q.x + 8 - sz / 2, q.y + 22 - SPRITE_H - sz + bob, sz, sz);   // 剛好在頭頂上
     }
   }
   if (world.cut && world.cut.phase === 'bang') {
@@ -463,6 +462,8 @@ function drawBang(c, x, y) {
 }
 
 // ---------- 人物：用 assets/chars.png 的走路圖（js/chars.js 記錄位置），還沒載入時用程式畫的小人 ----------
+const iconImg = new Image();   // 可以找他比賽的路人頭上的圖示
+iconImg.src = 'assets/challenge_icon.png';
 const charImg = new Image();
 charImg.src = 'assets/chars.png';
 const SPRITE_H = 26;   // 角色在地圖上有多高（一格是 16）

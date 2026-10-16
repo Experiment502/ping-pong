@@ -382,7 +382,7 @@ const ACTS = {
     save.story.racket = true; writeSave();
     careerHide();
     worldResume();
-    worldSay([`陳教練：「${st.name}嗎？不錯的選擇！」`, '陳教練：「頭上有小球拍的人都想找人比賽，走過去按 A 就能跟他比。球拍用久了會磨損，隨時回來找我保養。」'],
+    worldSay([`陳教練：「${st.name}嗎？不錯的選擇！」`, '陳教練：「頭上有桌球圖示的人都想找人比賽，走過去按 A 就能跟他比。球拍用久了會磨損，隨時回來找我保養。」'],
       () => worldCheckSight(), '陳教練');
   },
   exit: careerClose,
