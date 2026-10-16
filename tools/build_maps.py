@@ -314,6 +314,11 @@ SPRITES = {
     '街頭藝人': 'man', '逛街的姊姊': 'woman', '市民': 'man', '恢復中心的姊姊': 'woman', '店長': 'man',
     '報名櫃檯 小姐': 'woman',
 }
+# 看到你就會衝過來挑戰的人（劇情關鍵角色）；其他路人要你自己按 A 找他們，才會問你要不要比賽
+SPOTTERS = {'rival1', 'boss_dir', 'boss_pri'}
+for _m in M.values():
+    for _t in _m.trainers:
+        _t['spot'] = _t['id'] in SPOTTERS
 for _m in M.values():
     for _p in _m.trainers + _m.npcs:
         _p['sprite'] = SPRITES.get(_p['name'], 'woman' if _p['char'] == 'female' else 'man')

@@ -108,9 +108,28 @@ function worldSay(lines, done) {
   $('dlgText').textContent = lines[0];
   $('dlg').classList.remove('hidden');
 }
+// 有兩個選項的對話（例如「要比賽嗎？」）
+function worldAsk(line, yes, no, onYes, onNo) {
+  world.dialog = { lines: [line], i: 0, choice: true, onYes, onNo };
+  $('dlgText').textContent = line;
+  $('dlgYes').textContent = yes; $('dlgNo').textContent = no;
+  show('dlgChoice', true);
+  $('dlg').classList.remove('hidden');
+}
+function answerAsk(yes) {
+  const d = world.dialog;
+  if (!d || !d.choice) return;
+  world.dialog = null;
+  show('dlgChoice', false);
+  $('dlg').classList.add('hidden');
+  const f = yes ? d.onYes : d.onNo;
+  if (f) f();
+}
+$('dlgYes').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); answerAsk(true); });
+$('dlgNo').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); answerAsk(false); });
 function dialogNext() {
   const d = world.dialog;
-  if (!d) return;
+  if (!d || d.choice) return;
   d.i++;
   if (d.i < d.lines.length) { $('dlgText').textContent = d.lines[d.i]; return; }
   world.dialog = null;
@@ -184,7 +203,7 @@ function reqMet(t) {
 function worldCheckSight() {
   if (!save || world.lock || world.moving || world.dialog || world.paused) return false;
   for (const n of world.npcs) {
-    if (n.type !== 'trainer' || save.beaten[n.d.id] || !reqMet(n.d) || n.d.id === world.calm) continue;
+    if (n.type !== 'trainer' || !n.d.spot || save.beaten[n.d.id] || !reqMet(n.d) || n.d.id === world.calm) continue;
     const [dx, dy] = DIRV[n.dir];
     for (let i = 1; i <= n.d.range; i++) {
       const x = n.x + dx * i, y = n.y + dy * i;
@@ -240,7 +259,10 @@ function talk(n) {
     if (save.beaten[d.id]) return worldSay([`${d.name}：「${d.after}」`]);
     if (!hasRacket()) return worldSay([`${d.name}：「你沒有球拍耶，${save.story.racket ? '先去市區中心的商店買一支吧！' : '先去學校的桌球教室上課吧！'}」`]);
     if (!reqMet(d)) return worldSay([d.blocked || `${d.name}：「……」`]);
-    return worldSay([`${d.name}：「${d.intro}」`], () => startTrainerBattle(n));
+    if (d.spot) return worldSay([`${d.name}：「${d.intro}」`], () => startTrainerBattle(n));
+    // 一般路人：先問你要不要比賽，可以拒絕
+    return worldAsk(`${d.name}：「${d.intro}」（贏了可以拿到 ${money(d.prize)}）`, '🏓 比賽', '下次吧',
+      () => startTrainerBattle(n), () => worldSay([`${d.name}：「好吧，想比賽的時候再來找我！」`]));
   }
   if (d.role === 'mom') {
     worldSavePos(); writeSave();
@@ -344,6 +366,11 @@ window.addEventListener('keydown', e => {
   if (S.mode !== 'world') return;
   const d = KEYDIR[e.key];
   if (d) { keysHeld[d] = true; lastKey = d; e.preventDefault(); return; }
+  if (world.dialog && world.dialog.choice) {
+    if (e.key === 'z' || e.key === 'Enter' || e.key === ' ' || e.key === 'y') { e.preventDefault(); answerAsk(true); }
+    if (e.key === 'x' || e.key === 'Escape' || e.key === 'n') { e.preventDefault(); answerAsk(false); }
+    return;
+  }
   if (e.key === 'z' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (!e.repeat) pressA(); }
   if (e.key === 'Escape' || e.key === 'm') openWorldMenu();
 });
@@ -385,6 +412,17 @@ function drawWorld(dt) {
     const frame = walking ? (o.step ? 1 : 2) : 0;
     const key = e.me ? (save && save.char === 'female' ? 'player_f' : 'player_m') : o.sp;
     if (!drawSprite(ctx, e.x, e.y, o.dir, frame, key)) drawPerson(ctx, e.x, e.y, o.dir, frame, e.me ? playerPal() : o.pal);
+  }
+  // 可以找他比賽的路人：頭上有一個小球拍（打贏過就不顯示）
+  if (save && !world.cut) {
+    const bob = Math.round(Math.sin(world.time * 3) * 1.5);
+    for (const n of world.npcs) {
+      if (n.type !== 'trainer' || n.d.spot || save.beaten[n.d.id] || !reqMet(n.d)) continue;
+      const q = personPx(n), x = q.x + 8, y = q.y - SPRITE_H + 10 + bob;
+      ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.arc(x, y, 4.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#d9443a'; ctx.beginPath(); ctx.arc(x - 0.6, y - 0.6, 2.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#b07a45'; ctx.fillRect(x + 0.6, y + 0.8, 1.4, 2.4);
+    }
   }
   if (world.cut && world.cut.phase === 'bang') {
     const q = personPx(world.cut.n), bob = Math.round(Math.min(1, world.cut.t * 6) * 3);

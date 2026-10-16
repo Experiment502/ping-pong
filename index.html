@@ -131,6 +131,11 @@
     background: #fdfbf3; color: #1a1a2a; border: 4px solid #2a3560; border-radius: 12px; font-size: 16px; line-height: 1.55;
     box-shadow: 0 4px 0 rgba(0, 0, 0, .35);
   }
+  #dlgChoice { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+  #dlgChoice.hidden { display: none; }
+  #dlgChoice button { font-size: 15px; padding: 7px 16px; background: #1d2850; color: #fff; }
+  #dlgChoice button:first-child { background: #d9443a; border-color: #d9443a; }
+  #dlg:has(#dlgChoice:not(.hidden)) .dlgNext { display: none; }
   .dlgNext { position: absolute; right: 12px; bottom: 4px; color: #d9443a; font-size: 12px; animation: blink 1s infinite; }
   @keyframes blink { 50% { opacity: 0; } }
   @media (max-aspect-ratio: 1/1) {
@@ -273,7 +278,7 @@
   </div>
   <button id="btnA" aria-label="A 鍵">A</button>
   <button id="btnMenu" aria-label="選單">☰</button>
-  <div id="dlg" class="hidden"><div id="dlgText"></div><div class="dlgNext">▼</div></div>
+  <div id="dlg" class="hidden"><div id="dlgText"></div><div id="dlgChoice" class="hidden"><button id="dlgYes"></button><button id="dlgNo"></button></div><div class="dlgNext">▼</div></div>
 </div>
 
 <div id="pauseOv" class="overlay hidden">
@@ -403,7 +408,7 @@
       <li><b>難度</b>：會調整所有對手的強度。選「簡單」對手會變弱，選「困難」對手會變強；每次進入冠軍之路都可以重新選。</li>
       <li><b>操作</b>：左下的方向鍵走路，<b>A</b> 鍵跟人說話、調查東西，右上的 <b>☰</b> 是選單（我的球具、存檔、回主選單）。電腦上可以用方向鍵和 Z 鍵。</li>
       <li><b>第一支球拍</b>：去學校走廊右邊的桌球教室找陳教練，選速度型、控制型或旋轉型。</li>
-      <li><b>路人挑戰</b>：有球拍之後，走到別人看得到的地方，對方頭上會跳出「！」走過來挑戰你。贏了拿獎金，輸了要付錢給對方。也可以按 A 主動找他們比賽。</li>
+      <li><b>找人比賽</b>：頭上有小球拍圖示的人可以比賽。走到他面前按 A，他會問你要不要比，選「比賽」才會開打，也可以拒絕。贏了拿獎金，輸了要付錢給對方。只有勁敵阿翔、訓導主任和校長這幾個關鍵人物，看到你會跳出「！」主動來挑戰。</li>
       <li><b>學校的關卡</b>：打敗三位老師後，訓導主任才會接受挑戰；打敗主任後，去操場找校長。打敗校長，就能代表學校去市區中心的<b>市立體育館</b>，跟裡面的報名櫃檯報名比賽。</li>
       <li><b>賽事</b>：校際賽 → 地區比賽 → 全國比賽 → 亞洲區比賽。每一級的「關鍵賽」奪冠，就會解鎖下一級。報名要付報名費，拿到冠軍或亞軍有獎金。</li>
       <li><b>球拍耐久度</b>：比賽中每一分都會磨損球拍（失分磨損比較多），比賽畫面左上角看得到。
