@@ -105,22 +105,15 @@
   #pauseItems:empty { display: none; }
   /* ---------- 地圖操作 ---------- */
   #worldUI { position: fixed; inset: 0; pointer-events: none; }
-  #dpad {
-    position: fixed; left: max(14px, env(safe-area-inset-left)); bottom: 14px; width: 132px; height: 132px; pointer-events: auto;
-    border-radius: 50%; background: rgba(10, 14, 30, .35); touch-action: none;
+  #joy {
+    position: fixed; left: max(18px, env(safe-area-inset-left)); bottom: 18px; width: 124px; height: 124px; pointer-events: auto;
+    border-radius: 50%; background: rgba(10, 14, 30, .35); border: 3px solid rgba(255, 255, 255, .3); box-sizing: border-box; touch-action: none;
   }
-  #dpad span {
-    position: absolute; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
-    border-radius: 10px; background: rgba(255, 255, 255, .22); color: #fff; font-size: 18px; border: 2px solid rgba(255, 255, 255, .35);
+  #joyKnob {
+    position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; pointer-events: none;
+    background: rgba(255, 255, 255, .45); border: 3px solid rgba(255, 255, 255, .7); box-sizing: border-box;
   }
-  #dpad span.on { background: rgba(255, 209, 102, .7); }
-  #dpad [data-d="up"] { left: 44px; top: 0; } #dpad [data-d="down"] { left: 44px; bottom: 0; }
-  #dpad [data-d="left"] { left: 0; top: 44px; } #dpad [data-d="right"] { right: 0; top: 44px; }
-  #btnA {
-    position: fixed; right: max(18px, env(safe-area-inset-right)); bottom: 34px; width: 74px; height: 74px; border-radius: 50%;
-    pointer-events: auto; font-family: 'Press Start 2P', monospace; font-size: 20px; padding: 0;
-    background: rgba(217, 68, 58, .85); border: 3px solid rgba(255, 255, 255, .6); touch-action: none;
-  }
+  #joy.on #joyKnob { background: rgba(255, 209, 102, .8); }
   #btnMenu {
     position: fixed; right: max(12px, env(safe-area-inset-right)); top: 10px; width: 46px; height: 46px; padding: 0; border-radius: 10px;
     pointer-events: auto; font-size: 22px; background: rgba(8, 12, 28, .7); border: 2px solid rgba(255, 255, 255, .35);
@@ -273,10 +266,7 @@
 </div>
 
 <div id="worldUI" class="hidden">
-  <div id="dpad" aria-label="方向鍵">
-    <span data-d="up">▲</span><span data-d="left">◀</span><span data-d="right">▶</span><span data-d="down">▼</span>
-  </div>
-  <button id="btnA" aria-label="A 鍵">A</button>
+  <div id="joy" aria-label="搖桿"><div id="joyKnob"></div></div>
   <button id="btnMenu" aria-label="選單">☰</button>
   <div id="dlg" class="hidden"><div id="dlgText"></div><div id="dlgChoice" class="hidden"><button id="dlgYes"></button><button id="dlgNo"></button></div><div class="dlgNext">▼</div></div>
 </div>
@@ -406,9 +396,9 @@
     <ul>
       <li>在主選單按<b>🏆 冠軍之路</b>，選好難度、角色和慣用手就會進入故事（之後換角色，存檔裡的主角也會跟著換）。你是光明國小的學生，故事從你第一次上桌球課的早上開始。</li>
       <li><b>難度</b>：會調整所有對手的強度。選「簡單」對手會變弱，選「困難」對手會變強；每次進入冠軍之路都可以重新選。</li>
-      <li><b>操作</b>：左下的方向鍵走路，<b>A</b> 鍵跟人說話、調查東西，右上的 <b>☰</b> 是選單（我的球具、存檔、回主選單）。電腦上可以用方向鍵和 Z 鍵。</li>
+      <li><b>操作</b>：拖動左下的搖桿走路，<b>點一下畫面</b>就能跟面前的人說話、調查東西（也可以直接點旁邊的人），右上的 <b>☰</b> 是選單（我的球具、存檔、回主選單）。電腦上可以用方向鍵和 Z 鍵。</li>
       <li><b>第一支球拍</b>：去學校教學樓一樓走廊盡頭的桌球體育館找陳教練，選速度型、控制型或旋轉型。</li>
-      <li><b>找人比賽</b>：頭上有桌球相框圖示的人可以比賽。走到他面前按 A，他會問你要不要比，選「比賽」才會開打，也可以拒絕。贏了拿獎金，輸了要付錢給對方。只有勁敵阿翔、訓導主任和校長這幾個關鍵人物，看到你會跳出「！」主動來挑戰。</li>
+      <li><b>找人比賽</b>：頭上有桌球相框圖示的人可以比賽。走到他面前點一下畫面，他會問你要不要比，選「比賽」才會開打，也可以拒絕。贏了拿獎金，輸了要付錢給對方。只有勁敵阿翔、訓導主任和校長這幾個關鍵人物，看到你會跳出「！」主動來挑戰。</li>
       <li><b>學校的關卡</b>：打敗三位老師後，訓導主任才會接受挑戰；打敗主任後，去操場找校長。打敗校長，就能代表學校去市區中心的<b>市立體育館</b>，跟裡面的報名櫃檯報名比賽。</li>
       <li><b>賽事</b>：校際賽 → 地區比賽 → 全國比賽 → 亞洲區比賽。每一級的「關鍵賽」奪冠，就會解鎖下一級。報名要付報名費，拿到冠軍或亞軍有獎金。</li>
       <li><b>球拍耐久度</b>：比賽中每一分都會磨損球拍（失分磨損比較多），比賽畫面左上角看得到。

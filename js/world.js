@@ -72,7 +72,7 @@ function blocked(x, y) {
 
 // ---------- 進入 / 離開地圖模式 ----------
 function worldShowUI() { show('worldUI', true); }
-function worldHideUI() { show('worldUI', false); padDir = null; }
+function worldHideUI() { show('worldUI', false); joyReset(); }
 function worldEnter(isNew) {
   S.mode = 'world';
   Object.assign(world, { paused: false, lock: false, cut: null, fade: null, flash: null, dialog: null });
@@ -84,7 +84,7 @@ function worldEnter(isNew) {
   if (isNew) {
     worldSay(['媽媽：「早安！今天是你第一次上桌球課的日子喔！」',
       '媽媽：「出門往右走，經過公園就是學校。桌球體育館在教學樓一樓走廊的盡頭。」',
-      '（用左下的方向鍵走路，按 A 可以跟人說話、調查東西，右上的 ☰ 是選單）']);
+      '（拖動左下的搖桿走路，點一下畫面可以跟人說話、調查東西，右上的 ☰ 是選單）']);
   } else if (!hasRacket() && save.story.racket) {
     worldSay(['你沒有球拍了，去市區中心的商店買一支吧。']);
   }
@@ -236,11 +236,11 @@ function updateCut(dt) {
 function startTrainerBattle(n) { world.lock = true; world.flash = { t: 0, n }; }
 function beginTrainerBattle(n) {
   const t = n.d;
-  world.calm = t.id;   // 比完之後，這個人在你離開這張地圖之前不會再衝過來（想再比可以按 A 找他）
+  world.calm = t.id;   // 比完之後，這個人在你離開這張地圖之前不會再衝過來（想再比可以點畫面找他）
   careerStartBattle({ kind: 'trainer', op: { name: t.name, char: t.char, style: t.style, str: t.str }, bestOf: 1, trainer: t });
 }
 
-// ---------- 按 A：說話、調查 ----------
+// ---------- 點畫面（鍵盤 Z）：說話、調查 ----------
 function pressA() {
   if (world.paused) return;
   if (world.dialog) { dialogNext(); return; }
@@ -276,7 +276,7 @@ function talk(n) {
   return worldSay(quote(d.name, d.lines));
 }
 function interactObj(o) {
-  if (o.enter) return startWarp(o.enter);          // 按 A 走進去（例如門朝下的商店）
+  if (o.enter) return startWarp(o.enter);          // 點畫面走進去（例如門朝下的商店）
   if (o.role === 'arena') return openArena(false);
   if (o.role === 'save') { worldSavePos(); writeSave(); return worldSay([o.text || '休息一下……進度已經存檔了！']); }
   if (o.text) return worldSay([o.text]);
@@ -327,7 +327,7 @@ function shopArrival() {
   worldSay(['店長：「球拍壞了，錢又不夠嗎？」', '店長：「這支練習拍先送你用吧！要加油喔！」', '得到了「練習拍」！']);
 }
 
-// ---------- 操作：虛擬方向鍵、A 鍵、鍵盤 ----------
+// ---------- 操作：虛擬搖桿、點畫面、鍵盤 ----------
 let padDir = null, padId = null;
 const keysHeld = {};
 let lastKey = null;
@@ -337,24 +337,43 @@ function heldDir() {
   if (lastKey && keysHeld[lastKey]) return lastKey;
   return Object.keys(keysHeld).find(k => keysHeld[k]) || null;
 }
-const dpad = $('dpad');
-function padFrom(e) {
-  const r = dpad.getBoundingClientRect();
-  const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
-  if (Math.hypot(dx, dy) < r.width * 0.1) return null;
-  return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+// 搖桿：圓鈕跟著手指移動（最多推到底座邊緣），推的方向取上下左右裡最接近的那一個
+const joy = $('joy'), joyKnob = $('joyKnob');
+function joyMove(e) {
+  const r = joy.getBoundingClientRect(), max = r.width / 2 - 20;
+  let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+  const dist = Math.hypot(dx, dy);
+  if (dist > max) { dx *= max / dist; dy *= max / dist; }
+  joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+  padDir = dist < 14 ? null : Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
 }
-function markPad() { dpad.querySelectorAll('[data-d]').forEach(el => el.classList.toggle('on', el.dataset.d === padDir)); }
-dpad.addEventListener('pointerdown', e => {
+function joyReset() { padDir = null; padId = null; joyKnob.style.transform = ''; joy.classList.remove('on'); }
+joy.addEventListener('pointerdown', e => {
   e.preventDefault(); initAudio();
-  padId = e.pointerId; dpad.setPointerCapture(e.pointerId);
-  padDir = padFrom(e); markPad();
+  padId = e.pointerId; joy.setPointerCapture(e.pointerId); joy.classList.add('on');
+  joyMove(e);
 });
-dpad.addEventListener('pointermove', e => { if (e.pointerId === padId) { padDir = padFrom(e); markPad(); } });
-const padEnd = e => { if (e.pointerId === padId) { padDir = null; padId = null; markPad(); } };
-dpad.addEventListener('pointerup', padEnd);
-dpad.addEventListener('pointercancel', padEnd);
-$('btnA').addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); pressA(); });
+joy.addEventListener('pointermove', e => { if (e.pointerId === padId) joyMove(e); });
+const padEnd = e => { if (e.pointerId === padId) joyReset(); };
+joy.addEventListener('pointerup', padEnd);
+joy.addEventListener('pointercancel', padEnd);
+// 點一下畫面：跟面前的人說話、調查東西；點的是旁邊一格的人或東西，就先轉過去面向它
+cv.addEventListener('pointerdown', e => {
+  if (S.mode !== 'world' || !world.cam) return;
+  initAudio();
+  if (!world.dialog && !world.moving && !world.lock && !world.paused) {
+    const { k, camX, camY } = world.cam, ct = CT();
+    const tx = Math.floor((e.clientX / k + camX) / ct), ty = Math.floor((e.clientY / k + camY) / ct);
+    // 人物比一格高，點到頭也算（往下一格找）
+    for (const [x, y] of [[tx, ty], [tx, ty + 1]]) {
+      const dx = x - world.x, dy = y - world.y;
+      if (Math.abs(dx) + Math.abs(dy) !== 1 || (!npcAt(x, y) && !world.m.objAt[x + ',' + y])) continue;
+      world.dir = dx > 0 ? 'right' : dx < 0 ? 'left' : dy > 0 ? 'down' : 'up';
+      break;
+    }
+  }
+  pressA();
+});
 $('dlg').addEventListener('pointerdown', e => { e.preventDefault(); pressA(); });
 $('btnMenu').addEventListener('click', openWorldMenu);
 function openWorldMenu() {
@@ -399,6 +418,7 @@ function drawWorld(dt) {
   const camY = mh <= vh ? (mh - vh) / 2 : clamp(p.y + 8 - vh / 2, 0, mh - vh);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.fillStyle = '#05070d'; ctx.fillRect(0, 0, W, H);
+  world.cam = { k, camX, camY };   // 點畫面時用來換算點到哪一格
   ctx.setTransform(DPR * k, 0, 0, DPR * k, -camX * DPR * k, -camY * DPR * k);
   const img = mapImg(world.id);
   if (img.complete && img.naturalWidth) {
