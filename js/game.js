@@ -487,12 +487,14 @@ function updateOpp(dt) {
 const MSG_WIN = { out: '對手出界', net: '對手掛網', own: '對手失誤', miss: '對手沒接到' };
 const MSG_LOSE = { out: '你打出界了', net: '你掛網了', own: '打到自己這邊了', miss: '沒接到球' };
 
+// 一局打到幾分：平常 11 分，生涯模式跟路人比賽只打 5 分
+const gamePts = () => (S.careerMatch && S.pts) || 11;
 function nextServer() {
-  const t = S.ps + S.as;
-  const k = S.ps >= 10 && S.as >= 10 ? t : Math.floor(t / 2);
+  const t = S.ps + S.as, deuce = gamePts() - 1;
+  const k = S.ps >= deuce && S.as >= deuce ? t : Math.floor(t / 2);
   return k % 2 === 0 ? S.firstServer : other(S.firstServer);
 }
-const isGameOver = () => (S.ps >= 11 || S.as >= 11) && Math.abs(S.ps - S.as) >= 2;
+const isGameOver = () => (S.ps >= gamePts() || S.as >= gamePts()) && Math.abs(S.ps - S.as) >= 2;
 
 function showMsg(msg, sub, color, t) { S.msg = msg; S.sub = sub; S.msgColor = color; S.msgT = t || 1.4; }
 

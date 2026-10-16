@@ -237,7 +237,7 @@ function startTrainerBattle(n) { world.lock = true; world.flash = { t: 0, n }; }
 function beginTrainerBattle(n) {
   const t = n.d;
   world.calm = t.id;   // 比完之後，這個人在你離開這張地圖之前不會再衝過來（想再比可以點畫面找他）
-  careerStartBattle({ kind: 'trainer', op: { name: t.name, char: t.char, style: t.style, str: t.str }, bestOf: 1, trainer: t });
+  careerStartBattle({ kind: 'trainer', op: { name: t.name, char: t.char, style: t.style, str: t.str }, bestOf: 1, pts: t.spot ? 11 : 5, trainer: t });   // 韓宇、主任、校長打 11 分，一般路人打 5 分就好
 }
 
 // ---------- 點畫面（鍵盤 Z）：說話、調查 ----------
@@ -262,7 +262,7 @@ function talk(n) {
     if (!reqMet(d)) return worldSay([d.blocked || `${d.name}：「……」`]);
     if (d.spot) return worldSay([`${d.name}：「${d.intro}」`], () => startTrainerBattle(n));
     // 一般路人：先問你要不要比賽，可以拒絕
-    return worldAsk(`${d.name}：「${d.intro}」（贏了可以拿到 ${money(d.prize)}）`, '🏓 比賽', '下次吧',
+    return worldAsk(`${d.name}：「${d.intro}」（一局 5 分，贏了可以拿到 ${money(d.prize)}）`, '🏓 比賽', '下次吧',
       () => startTrainerBattle(n), () => worldSay([`${d.name}：「好吧，想比賽的時候再來找我！」`]));
   }
   if (d.role === 'mom') {
