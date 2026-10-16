@@ -90,7 +90,9 @@ SIDES = {
     'girl': (R(1), L(1)), 'student_m': (R(1), R(2)), 'student_f': (R(1), L(1)), 'grandpa': (R(1), L(1)),
     'grandma': (R(1), L(1)), 'tt_m': (L(1), R(1)), 'tt_f': (L(1), R(1)),
 }
-UP_ROW = {'tt_f': 0}
+UP_ROW = {}
+# 三格沒有平均排的行：直接指定切開的 x 座標（原圖像素），不然會切到頭髮
+CUT_X = {'15_female_referee': {3: [0, 68, 116, 186]}}
 # 走路第 1 格跟其他格長得不一樣的，改用第 3 格左右翻轉代替（方向：要修的那幾行）
 MIRROR_STEP = {'player_f': ['down']}
 # 直接指定某個方向的三格要用原圖的哪幾格：(行, 格, 是否翻轉)；順序是 跨步、站、另一腳跨步
@@ -100,6 +102,8 @@ FRAMES = {
         'right': [(1, 2, False), (1, 1, False), (1, 2, False)],
         'left': [(1, 2, True), (1, 1, True), (1, 2, True)],
     },
+    # 女裁判（桌球社學姊）原圖只有最後一行是綁馬尾的女生，前三行畫成男生的刺刺頭；她不會走路，四個方向都用那一行
+    'tt_f': {d: [(3, 0, False), (3, 1, False), (3, 2, False)] for d in ('down', 'left', 'right', 'up')},
 }   # 女選手的圖沒有背面，往上走時先用正面
 ORDER = ['down', 'left', 'right', 'up']
 # 原圖的側面走路每一格都是「前面那隻手往前擺」，走起來只有一隻手在動。
@@ -239,8 +243,9 @@ for i, name in enumerate(names):
     rows = []
     for r in range(4):
         row = []
+        xs = CUT_X.get(name, {}).get(r) or [round(c * W / 3) for c in range(4)]
         for c in range(3):
-            cell = im[round(r * H / 4):round((r + 1) * H / 4), round(c * W / 3):round((c + 1) * W / 3)]
+            cell = im[round(r * H / 4):round((r + 1) * H / 4), xs[c]:xs[c + 1]]
             row.append(cutout(cell))
         rows.append(row)
     key = KEYS.get(name, name)
