@@ -1,5 +1,5 @@
 'use strict';
-// ==================== 球王之路（生涯模式）：存檔、球具、比賽 ====================
+// ==================== 冠軍之路（生涯模式）：存檔、球具、比賽 ====================
 // 會用到 game.js 的 S、DIFF、GEAR、openToss、startGame、show、$、crowd；地圖部分在 world.js
 
 const SAVE_KEY = 'fingertipPong.career.v1';
@@ -92,9 +92,13 @@ const EVENT_TIERS = [
   ] },
 ];
 
+// 主選單選的難度會調整所有對手的強度：簡單變弱、困難變強
+const CAREER_LEVEL = { easy: t => t * 0.7, normal: t => t, hard: t => t + (1 - t) * 0.4 };
+
 // 對手的強度在「簡單」和「困難」之間內插，打法決定球路
 function buildAI(o) {
-  const e = DIFF.easy, h = DIFF.hard, t = o.str, st = STYLES[o.style];
+  const lvl = CAREER_LEVEL[menuSnapshot && menuSnapshot.diff] || CAREER_LEVEL.normal;
+  const e = DIFF.easy, h = DIFF.hard, t = lvl(o.str), st = STYLES[o.style];
   const L = (a, b) => a + (b - a) * t;
   return {
     label: o.name, T: L(e.T, h.T) * (st.speed || 1), aimX: L(e.aimX, h.aimX), aiSpeed: L(e.aiSpeed, h.aiSpeed),
@@ -183,7 +187,7 @@ function useItem(id) {
 }
 
 // ---------- 畫面狀態與共用小工具 ----------
-const ui = { view: 'hub', pickChar: null, pickStarter: null, shopTab: 'racket', evT: 0, evE: 0, result: null, confirmReset: false, msg: '' };
+const ui = { view: 'hub', pickStarter: null, shopTab: 'racket', evT: 0, evE: 0, result: null, confirmReset: false, msg: '' };
 let menuSnapshot = null;   // 進入生涯前主選單的設定，離開時還原
 
 const money = n => '$' + Number(n).toLocaleString();
@@ -203,14 +207,11 @@ const itemsText = () => Object.entries(ITEMS).map(([id, it]) => `${it.name} ×${
 
 // ---------- 各個畫面 ----------
 const VIEWS = {
-  intro() {
-    const chars = ['male', 'female'].map(c => `
-      <button class="card pick${ui.pickChar === c ? ' sel' : ''}" data-act="pickChar" data-arg="${c}">
-        <img src="${portrait(c)}" alt=""><h3>${c === 'male' ? '男生' : '女生'}</h3></button>`).join('');
-    return `<h1>🏆 球王之路</h1>
+  intro() {   // 角色在主選單已經選好了
+    return `<h1>🏆 冠軍之路</h1>
       <p class="lead">你是光明國小的學生。今天，是你第一次上桌球課的日子……<br>從學校開始，一路打到地區、全國、亞洲，成為真正的球王！</p>
-      <h2>選擇你的角色</h2><div class="cards chars2">${chars}</div>
-      <div class="cbtns"><button class="main" data-act="begin"${ui.pickChar ? '' : ' disabled'}>開始故事</button>
+      <div class="cards chars2"><div class="card pick"><img src="${portrait(S.char)}" alt=""><h3>${S.char === 'male' ? '男生' : '女生'}</h3></div></div>
+      <div class="cbtns"><button class="main" data-act="begin">開始故事</button>
       <button data-act="exit">返回</button></div>`;
   },
 
@@ -369,9 +370,8 @@ function careerHide() { show('careerOv', false); }
 
 // ---------- 按鈕動作 ----------
 const ACTS = {
-  pickChar(c) { ui.pickChar = c; careerShow(); },
   begin() {
-    save = newSave(ui.pickChar); writeSave();
+    save = newSave(S.char); writeSave();
     careerHide();
     worldEnter(true);
   },
@@ -437,7 +437,7 @@ const ACTS = {
   resetNo() { ui.confirmReset = false; careerShow(); },
   resetYes() {
     try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* 忽略 */ }
-    save = null; ui.confirmReset = false; ui.pickChar = null; ui.pickStarter = null; ui.msg = '';
+    save = null; ui.confirmReset = false; ui.pickStarter = null; ui.msg = '';
     worldExit();
     careerShow('intro');
   },
@@ -453,6 +453,7 @@ function careerOpen() {
   initAudio();
   menuSnapshot = { diff: S.diff, bestOf: S.bestOf, practice: S.practice, char: S.char };
   save = loadSave();
+  if (save && save.char !== S.char) { save.char = S.char; writeSave(); }   // 用主選單選的角色
   ui.msg = '';
   show('menuOv', false);
   if (save) worldEnter(false); else careerShow('intro');
@@ -462,7 +463,7 @@ function careerClose() {
   if (menuSnapshot) Object.assign(S, menuSnapshot);
   Object.assign(S, { mode: 'menu', careerMatch: false, oppChar: null, oppName: null, ps: 0, as: 0, pg: 0, ag: 0, game: 1 });
   GEAR = NEUTRAL_GEAR;
-  careerHide(); show('menuOv', true);
+  careerHide(); menuHome();
 }
 
 // ---------- 開始比賽：路人挑戰（直接開打）或體育館賽事（先猜球） ----------
@@ -533,4 +534,3 @@ function trainerMatchEnd(won, forfeit, broken) {
   else worldSay(lines, () => worldCheckSight());
 }
 
-$('careerBtn').addEventListener('click', careerOpen);

@@ -36,14 +36,17 @@
     display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 10px 6px;
     background: #121a36; border: 3px solid #2a3560; border-radius: 10px;
   }
-  .char img { height: min(24vh, 150px); image-rendering: pixelated; }
+  .char img { height: min(24vh, 150px, 36vw); image-rendering: pixelated; }
+  .menuWrap { max-width: 100%; }
   .char.sel { border-color: #ffd166; background: #1d2850; }
   .char[data-c="male"].sel { border-color: #5d8cff; }
   .char[data-c="female"].sel { border-color: #ff5b5b; }
-  .opts { display: grid; grid-template-columns: auto auto; gap: 8px 10px; align-items: center; }
-  .opts .lbl { text-align: right; }
-  .opts .btns { justify-content: flex-start; gap: 6px; max-width: 340px; }
-  .opts button { font-size: 15px; padding: 7px 12px; }
+  .modeBtns { display: flex; flex-direction: column; gap: 10px; width: 230px; }
+  .modeBtns button.main { padding: 12px 10px; }
+  .stepTitle { font-size: 18px; color: #dfe6ff; }
+  .stepMode { display: inline-block; margin-right: 8px; padding: 2px 10px; border-radius: 10px; font-size: 14px; background: #2a3a6e; color: #ffd166; }
+  .choice { max-width: 460px; gap: 10px; }
+  .choice button { font-size: 18px; padding: 14px 22px; min-width: 110px; }
   .howto { max-width: 360px; font-size: 13px; line-height: 1.6; color: #cfd6ea; }
   .howto b { color: #ffd166; }
   .btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
@@ -57,7 +60,7 @@
   #goImg { height: min(30vh, 180px); image-rendering: pixelated; }
   #goScore { font-family: 'Press Start 2P', monospace; font-size: 22px; }
   #goSub { color: #cfd6ea; font-size: 14px; }
-  /* ---------- 球王之路 ---------- */
+  /* ---------- 冠軍之路 ---------- */
   button.careerBtn { background: #b8860b; border-color: #ffd166; }
   #careerOv { background: rgba(7, 11, 26, .95); }
   .career { width: min(780px, 100%); display: flex; flex-direction: column; gap: 10px; text-align: left; }
@@ -160,10 +163,11 @@
     h1 { font-size: 20px; }
     .row { gap: 10px 22px; }
     .col { gap: 8px; }
-    .char img { height: min(34vh, 150px); }
-    .opts { gap: 6px 8px; }
-    .opts button { padding: 6px 10px; font-size: 14px; }
+    .char img { height: min(34vh, 150px, 36vw); }
     button.main { padding: 9px 30px; font-size: 18px; }
+    .modeBtns { gap: 8px; }
+    .modeBtns button.main { padding: 9px 10px; }
+    .choice button { padding: 11px 18px; }
     .howto { display: none; }
   }
 </style>
@@ -173,63 +177,72 @@
 <button id="pause" class="hidden" aria-label="暫停"></button>
 
 <div id="menuOv" class="overlay">
-  <h1>🏓 指尖桌球</h1>
-  <div class="row">
-    <div class="col">
-      <div class="lbl">選擇你的角色（對手會是另一位）</div>
-      <div class="chars">
-        <button class="char sel" data-c="male"><img src="assets/male_portrait.png" alt=""><span>男選手</span></button>
-        <button class="char" data-c="female"><img src="assets/female_portrait.png" alt=""><span>女選手</span></button>
-      </div>
-    </div>
-    <div class="col">
-      <div class="opts">
-        <div class="lbl">模式</div>
-        <div class="btns" id="modes">
-          <button data-m="match" class="sel">比賽</button>
-          <button data-m="practice">練習</button>
-        </div>
-        <div class="lbl">難度</div>
-        <div class="btns" id="diffs">
-          <button data-d="easy">簡單</button>
-          <button data-d="normal" class="sel">普通</button>
-          <button data-d="hard">困難</button>
-        </div>
-        <div class="lbl">慣用手</div>
-        <div class="btns" id="hands">
-          <button data-h="right" class="sel">右手</button>
-          <button data-h="left">左手</button>
-        </div>
-        <div class="lbl matchOnly">局數</div>
-        <div class="btns matchOnly" id="bestOf">
-          <button data-n="1">1 局</button>
-          <button data-n="3" class="sel">三戰兩勝</button>
-          <button data-n="5">五戰三勝</button>
-          <button data-n="7">七戰四勝</button>
-        </div>
-        <div class="lbl practiceOnly hidden">練習球路</div>
-        <div class="btns practiceOnly hidden" id="prKinds">
-          <button data-k="random" class="sel">隨機</button>
-          <button data-k="drive">平擊</button>
-          <button data-k="loop">上旋拉球</button>
-          <button data-k="chop">下旋切球</button>
-          <button data-k="side">側旋</button>
-          <button data-k="short">短球</button>
-          <button data-k="lob">吊高球</button>
-        </div>
+  <!-- 一步一步選：模式 → 難度 → 角色 → 慣用手 →（直接比賽）局數 /（練習模式）球路 -->
+  <div class="col menuWrap">
+    <h1>🏓 指尖桌球</h1>
+    <div class="col step" id="stepMode">
+      <div class="modeBtns" id="modes">
+        <button data-m="practice" class="main">🎯 練習模式</button>
+        <button data-m="match" class="main">🏓 直接比賽</button>
+        <button data-m="career" class="main careerBtn">🏆 冠軍之路</button>
       </div>
       <div class="howto">
         球打到哪一邊，就<b>點那一側的螢幕往中間滑</b>，手指的位置就是球拍。<br>
         每局 11 分，建議<b>橫向</b>遊玩。
       </div>
       <div class="btns">
-        <button id="startBtn" class="main">開始比賽</button>
-        <button id="careerBtn" class="main careerBtn">🏆 球王之路</button>
-      </div>
-      <div class="btns">
         <button class="helpBtn">📖 遊戲說明</button>
         <button class="soundBtn helpBtn2">🔊 音效：開</button>
       </div>
+    </div>
+    <div class="col step hidden" id="stepDiff">
+      <div class="stepTitle"><span class="stepMode"></span>選擇難度</div>
+      <div class="btns choice" id="diffs">
+        <button data-d="easy">簡單</button>
+        <button data-d="normal" class="sel">普通</button>
+        <button data-d="hard">困難</button>
+      </div>
+      <button class="backBtn helpBtn2">← 返回</button>
+    </div>
+    <div class="col step hidden" id="stepChar">
+      <div class="stepTitle"><span class="stepMode"></span>選擇角色</div>
+      <div class="lbl" id="charNote">對手會是另一位</div>
+      <div class="chars">
+        <button class="char sel" data-c="male"><img src="assets/male_portrait.png" alt=""><span>男選手</span></button>
+        <button class="char" data-c="female"><img src="assets/female_portrait.png" alt=""><span>女選手</span></button>
+      </div>
+      <button class="backBtn helpBtn2">← 返回</button>
+    </div>
+    <div class="col step hidden" id="stepHand">
+      <div class="stepTitle"><span class="stepMode"></span>選擇慣用手</div>
+      <div class="btns choice" id="hands">
+        <button data-h="right" class="sel">右手</button>
+        <button data-h="left">左手</button>
+      </div>
+      <button class="backBtn helpBtn2">← 返回</button>
+    </div>
+    <div class="col step hidden" id="stepBestOf">
+      <div class="stepTitle"><span class="stepMode"></span>選擇局數</div>
+      <div class="btns choice" id="bestOf">
+        <button data-n="1">1 局</button>
+        <button data-n="3" class="sel">三戰兩勝</button>
+        <button data-n="5">五戰三勝</button>
+        <button data-n="7">七戰四勝</button>
+      </div>
+      <button class="backBtn helpBtn2">← 返回</button>
+    </div>
+    <div class="col step hidden" id="stepPrKind">
+      <div class="stepTitle"><span class="stepMode"></span>選擇練習球路</div>
+      <div class="btns choice" id="prKinds">
+        <button data-k="random" class="sel">隨機</button>
+        <button data-k="drive">平擊</button>
+        <button data-k="loop">上旋拉球</button>
+        <button data-k="chop">下旋切球</button>
+        <button data-k="side">側旋</button>
+        <button data-k="short">短球</button>
+        <button data-k="lob">吊高球</button>
+      </div>
+      <button class="backBtn helpBtn2">← 返回</button>
     </div>
   </div>
 </div>
@@ -341,7 +354,7 @@
       <li>比賽開始前會<b>猜球</b>：猜球在裁判的哪一隻手裡，猜對的人決定先發球或先接發球。</li>
       <li>每 2 分換人發球，10:10 之後每 1 分換一次；每一局換人先發球。</li>
       <li>發球：球會往上拋，從旁邊滑過球就能直接打到對面。沒打到的話會重新拋球，不會失分。</li>
-      <li>局數可以在主選單選：1 局、三戰兩勝、五戰三勝或七戰四勝。</li>
+      <li>選<b>直接比賽</b>時，最後一步可以選局數：1 局、三戰兩勝、五戰三勝或七戰四勝。</li>
     </ul>
 
     <h2>六、對手的球路</h2>
@@ -378,15 +391,16 @@
 
     <h2>八、練習模式</h2>
     <ul>
-      <li>在主選單的「模式」選<b>練習</b>，再選要練的球路：隨機、平擊、上旋拉球、下旋切球、側旋、短球或吊高球。</li>
+      <li>在主選單按<b>🎯 練習模式</b>，選好難度、角色和慣用手後，再選要練的球路：隨機、平擊、上旋拉球、下旋切球、側旋、短球或吊高球。</li>
       <li>對手會一直送同一種球過來，不會回擊。你的球落在對手那半邊就算成功。</li>
       <li>上方會顯示成功數、目前連續成功數（STREAK）和最佳紀錄（BEST）。</li>
       <li>畫面下方會提示這種球該怎麼接。想結束練習，按上方中間的暫停，再選「回主選單」。</li>
     </ul>
 
-    <h2>九、球王之路（故事模式）</h2>
+    <h2>九、冠軍之路（故事模式）</h2>
     <ul>
-      <li>在主選單按<b>🏆 球王之路</b>。你是光明國小的學生，故事從你第一次上桌球課的早上開始。</li>
+      <li>在主選單按<b>🏆 冠軍之路</b>，選好難度、角色和慣用手就會進入故事（之後換角色，存檔裡的主角也會跟著換）。你是光明國小的學生，故事從你第一次上桌球課的早上開始。</li>
+      <li><b>難度</b>：會調整所有對手的強度。選「簡單」對手會變弱，選「困難」對手會變強；每次進入冠軍之路都可以重新選。</li>
       <li><b>操作</b>：左下的方向鍵走路，<b>A</b> 鍵跟人說話、調查東西，右上的 <b>☰</b> 是選單（我的球具、存檔、回主選單）。電腦上可以用方向鍵和 Z 鍵。</li>
       <li><b>第一支球拍</b>：去學校走廊右邊的桌球教室找陳教練，選速度型、控制型或旋轉型。</li>
       <li><b>路人挑戰</b>：有球拍之後，走到別人看得到的地方，對方頭上會跳出「！」走過來挑戰你。贏了拿獎金，輸了要付錢給對方。也可以按 A 主動找他們比賽。</li>
