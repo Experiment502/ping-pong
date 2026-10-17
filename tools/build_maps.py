@@ -225,7 +225,7 @@ m.trainer('boss_pri', 11, 3, 'down', '校長', 'male', 'allround', 0.38, rng=3, 
 m = new(8, '桌球體育館', 'v2_tt_gym.png', 30, 18, {
     **{r: [(2, 27)] for r in (4, 5, 6)},                         # 球桌上面（舞台前面）的走道
     **{r: [2, 3, 4, 12, 19, 26, 27] for r in range(7, 14)},      # 球桌左右兩邊的走道
-    **{r: [(0, 27)] for r in range(14, 18)}}, inside=True, cell=0.5)
+    **{r: [(0, 27)] for r in (14, 15)}}, inside=True, cell=0.5)   # 再下面是黑色的牆，不能走
 m.obj('ttable', 6, 7, 6, 7, text='桌球桌。今天也要好好練習！')
 m.obj('ttable', 13, 7, 6, 7, text='桌球桌。今天也要好好練習！')
 m.obj('ttable', 20, 7, 6, 7, text='桌球桌。今天也要好好練習！')
@@ -349,7 +349,7 @@ for x in (13, 14):
     link(7, x, 2, 20, 14, 3, 'up')
 for y in (3, 4, 5):
     link(7, 15, y, 8, 2, 15, 'right')
-for y in range(14, 18):
+for y in (14, 15):
     link(8, 0, y, 7, 14, 4, 'left')
 # 二樓走廊：教室、樓梯
 for x in (2, 3):
