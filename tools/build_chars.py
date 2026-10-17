@@ -1,6 +1,11 @@
 """把 assets/15_character_sprite_sheets 的走路圖整理成 assets/chars.png 和 js/chars.js。
 
 執行：python tools/build_chars.py [預覽圖路徑]
+另一種原圖是 assets/char_turnarounds 的「三視圖」：一排 3 個人（正面站、朝右跨步、背面站），
+或 4 個人（正面站、朝右站、朝右跨步、背面站），其餘的格子由程式做出來（見 TURN_H）。
+列在 TURN_USE 的角色才會在遊戲裡改用三視圖；還在試的先用測試模式看看：
+    python tools/build_chars.py --test assets/char_turnarounds/15_female_referee.png
+會產生 test/sprite_test.png 和 test/sprite_test.js，用瀏覽器打開 test/sprite_walk.html 就能看到走路的樣子。
 每張原圖是 4 行 x 3 格、洋紅色背景：第 1 行朝下、最後一行朝上，中間兩行是側面（方向不一定，見 SIDES）。
 處理方式：從每一格的邊緣往內把洋紅背景去掉（有輪廓線擋住的粉紅衣服不會被去掉），
 再用腳底對齊，排進一張圖集。
@@ -15,6 +20,7 @@ from PIL import Image
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 SRC = os.path.join(ROOT, 'assets', '15_character_sprite_sheets')
+TURN = os.path.join(ROOT, 'assets', 'char_turnarounds')
 OUT_PNG = os.path.join(ROOT, 'assets', 'chars.png')
 OUT_JS = os.path.join(ROOT, 'js', 'chars.js')
 CW, CH = 72, 104          # 圖集裡每一格的大小（原圖像素）
@@ -93,6 +99,9 @@ SIDES = {
 UP_ROW = {}
 # 三格沒有平均排的行：直接指定切開的 x 座標（原圖像素），不然會切到頭髮
 CUT_X = {'15_female_referee': {3: [0, 68, 116, 186]}}
+# 三視圖的角色：做好之後身高幾像素（圖集一格高 104；主角約 91、大人約 88、小學生約 76）
+TURN_H = {'15_female_referee': 86}
+TURN_USE = set()   # 遊戲裡改用三視圖的角色（原圖檔名）
 # 走路第 1 格跟其他格長得不一樣的，改用第 3 格左右翻轉代替（方向：要修的那幾行）
 MIRROR_STEP = {'player_f': ['down']}
 # 直接指定某個方向的三格要用原圖的哪幾格：(行, 格, 是否翻轉)；順序是 跨步、站、另一腳跨步
@@ -234,24 +243,62 @@ def swap_arms(a):
     return a   # 圖集裡每個角色的四行
 
 
-names = sorted(f[:-4] for f in os.listdir(SRC) if f.endswith('.png'))
-atlas = Image.new('RGBA', (PER_ROW * 3 * CW, ((len(names) + PER_ROW - 1) // PER_ROW) * 4 * CH), (0, 0, 0, 0))
-meta = {}
-for i, name in enumerate(names):
-    im = np.array(Image.open(os.path.join(SRC, name + '.png')).convert('RGB')).astype(int)
-    H, W = im.shape[:2]
-    rows = []
-    for r in range(4):
-        row = []
-        xs = CUT_X.get(name, {}).get(r) or [round(c * W / 3) for c in range(4)]
-        for c in range(3):
-            cell = im[round(r * H / 4):round((r + 1) * H / 4), xs[c]:xs[c + 1]]
-            row.append(cutout(cell))
-        rows.append(row)
-    key = KEYS.get(name, name)
+def despill(a, width=6):
+    """高解析度原圖的邊緣常混到洋紅背景（例如頭髮尖端偏紫）：離邊緣 width 像素內、偏洋紅的像素去掉。
+    粉紅色的鞋子、髮圈紅比藍多很多，不會被當成洋紅"""
+    a = a.copy(); al = a[..., 3] > 0
+    near = ~al
+    for _ in range(width):
+        near = near | np.pad(near, 1)[2:, 1:-1] | np.pad(near, 1)[:-2, 1:-1] | np.pad(near, 1)[1:-1, 2:] | np.pad(near, 1)[1:-1, :-2]
+    r, g, b = (a[..., i].astype(int) for i in range(3))
+    mag = al & near & (np.minimum(r, b) - g > 30) & (np.abs(r - b) < 60)
+    a[mag, 3] = 0
+    return a
+
+
+def split_figures(im):
+    """一排人物 → 每個人各自的範圍（用整欄都是洋紅背景的空隙切開）"""
+    cols = (~magenta(im)).sum(axis=0) > im.shape[0] * 0.01
+    runs, x = [], 0
+    while x < len(cols):
+        if cols[x]:
+            x0 = x
+            while x < len(cols) and cols[x]: x += 1
+            if x - x0 > im.shape[1] * 0.03: runs.append((x0, x))
+        x += 1
+    gaps = [0] + [(runs[i][1] + runs[i + 1][0]) // 2 for i in range(len(runs) - 1)] + [im.shape[1]]
+    return [im[:, gaps[i]:gaps[i + 1]] for i in range(len(runs))]
+
+
+def turnaround(path, name, key):
+    """三視圖 → 跟 4 行 x 3 格原圖一樣的 rows：正面、背面用站姿做走路；左邊用右邊翻轉。
+    3 個人：側面只有跨步一格（用程式把大跨步的腳併攏會斷成碎片，所以三格都用跨步）
+    4 個人：側面是 跨步、站、跨步"""
+    im = np.array(Image.open(path).convert('RGB')).astype(int)
+    figs = [despill(cutout(c)) for c in split_figures(im)]
+    assert len(figs) in (3, 4), f'{path}：找到 {len(figs)} 個人，要 3 或 4 個'
+    for f in figs:   # 頭髮之間被包住的洋紅背景（沒有連到外面，cutout 去不掉）
+        f[magenta(f[..., :3].astype(int)), 3] = 0
+    s_ = TURN_H.get(name, 86) / max(f.shape[0] for f in figs)       # 所有人用同一個比例縮小
+    figs = [np.array(Image.fromarray(f).resize((max(1, round(f.shape[1] * s_)), max(1, round(f.shape[0] * s_))), Image.LANCZOS))
+            for f in figs]
+    if len(figs) == 3:
+        front, walk, back = figs; stand = walk
+    else:
+        front, stand, walk, back = figs
+    for d_ in (FRAMES, MIRROR_STEP, UP_ROW, BORROW_BACK):   # 這些是給舊原圖用的特別處理，三視圖不用
+        d_.pop(key, None)
+    SIDE_PASS_WALK.discard(key)
+    SIDES[key] = (R(1), L(1))
+    SYNTH_FRONT_WALK[key] = ['down', 'up']
+    side = [walk, stand, walk]
+    return [[front] * 3, side, side, [back] * 3]
+
+
+def place(atlas, rows, key, bx, by):
+    """把一個角色的 4 個方向 x 3 格畫進圖集 (bx, by)，回傳 {方向: 第幾行}"""
     right, left = SIDES[key]
     src = {'down': (0, False), 'left': left, 'right': right, 'up': (UP_ROW.get(key, 3), False)}
-    bx, by = (i % PER_ROW) * 3 * CW, (i // PER_ROW) * 4 * CH
     dirs = {}
     for r, d in enumerate(ORDER):
         dirs[d] = r
@@ -285,6 +332,43 @@ for i, name in enumerate(names):
                 fim = fim.resize((max(1, int(fim.width * s_)), max(1, int(fim.height * s_))), Image.LANCZOS)
             # 腳底對齊格子底部、左右置中
             atlas.alpha_composite(fim, (bx + c * CW + (CW - fim.width) // 2, by + r * CH + CH - fim.height))
+    return dirs
+
+
+# 測試模式：只做一個三視圖角色，放到 test/，不動遊戲的圖集
+if len(sys.argv) > 2 and sys.argv[1] == '--test':
+    path = sys.argv[2]
+    name = os.path.basename(path)[:-4]
+    key = KEYS.get(name, name)
+    sheet = Image.new('RGBA', (3 * CW, 4 * CH), (0, 0, 0, 0))
+    dirs = place(sheet, turnaround(path, name, key), key, 0, 0)
+    out = os.path.join(ROOT, 'test')
+    sheet.save(os.path.join(out, 'sprite_test.png'))
+    open(os.path.join(out, 'sprite_test.js'), 'w', encoding='utf-8', newline='\n').write(
+        "'use strict';\n// 由 tools/build_chars.py --test 產生\n"
+        f"const TEST_SHEET = {json.dumps(dict(name=name, x=0, y=0, dirs=dirs))};\n")
+    print('寫入', os.path.normpath(os.path.join(out, 'sprite_test.png')), '和 sprite_test.js')
+    sys.exit(0)
+
+
+names = sorted(f[:-4] for f in os.listdir(SRC) if f.endswith('.png'))
+atlas = Image.new('RGBA', (PER_ROW * 3 * CW, ((len(names) + PER_ROW - 1) // PER_ROW) * 4 * CH), (0, 0, 0, 0))
+meta = {}
+for i, name in enumerate(names):
+    im = np.array(Image.open(os.path.join(SRC, name + '.png')).convert('RGB')).astype(int)
+    H, W = im.shape[:2]
+    key = KEYS.get(name, name)
+    tpath = os.path.join(TURN, name + '.png')
+    rows = turnaround(tpath, name, key) if name in TURN_USE and os.path.exists(tpath) else []
+    for r in range(4 if not rows else 0):
+        row = []
+        xs = CUT_X.get(name, {}).get(r) or [round(c * W / 3) for c in range(4)]
+        for c in range(3):
+            cell = im[round(r * H / 4):round((r + 1) * H / 4), xs[c]:xs[c + 1]]
+            row.append(cutout(cell))
+        rows.append(row)
+    bx, by = (i % PER_ROW) * 3 * CW, (i // PER_ROW) * 4 * CH
+    dirs = place(atlas, rows, key, bx, by)
     meta[key] = dict(x=bx, y=by, dirs=dirs)
     print(f'{name:24s} → {key}')
 

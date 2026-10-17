@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>人物走路測試</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #05070d; color: #fff; font-family: system-ui, sans-serif; overflow: hidden; touch-action: none; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+  #bar { position: fixed; left: 8px; right: 8px; top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  #bar button { font-size: 14px; padding: 7px 10px; border-radius: 8px; border: 2px solid rgba(255,255,255,.35); background: rgba(8,12,28,.8); color: #fff; }
+  #bar button.on { background: #4b6cff; }
+  #joy { position: fixed; width: 124px; height: 124px; margin: -62px 0 0 -62px; border-radius: 50%; box-sizing: border-box; pointer-events: none;
+    background: rgba(10,14,30,.35); border: 3px solid rgba(255,255,255,.3); }
+  #joy.off { display: none; }
+  #joyKnob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%;
+    background: rgba(255,255,255,.45); border: 3px solid rgba(255,255,255,.7); box-sizing: border-box; pointer-events: none; }
+  #joy.on #joyKnob { background: rgba(255,209,102,.8); }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="bar">
+  <button id="who">操作：學姊</button>
+  <button id="auto">自動繞桌子走</button>
+  <button id="sheet">看 12 格</button>
+  <button id="zoom">放大 2 倍</button>
+</div>
+<div id="joy" class="off"><div id="joyKnob"></div></div>
+<script src="../js/maps.js"></script>
+<script src="../js/chars.js"></script>
+<script src="sprite_test.js"></script>
+<script>
+'use strict';
+// 照 js/world.js 的寫法：一格 16、每秒走 4.5 格、走到一半之前顯示跨步
+const TILE = 16, SPEED = 4.5, SPRITE_H = 26;
+const DIRV = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+const m = WORLD_MAPS[8], CELL = m.cell || 1, CT = TILE * CELL;
+const solid = m.rows.map(r => [...r].map(ch => ch !== '.'));
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const load = src => { const i = new Image(); i.src = src; return i; };
+const mapImg = load('../' + m.img), gameSheet = load('../assets/chars.png'), testSheet = load('sprite_test.png?' + Date.now());
+const SHEETS = {
+  test: { img: testSheet, sh: TEST_SHEET },
+  me: { img: gameSheet, sh: CHAR_SHEETS.player_m },
+};
+const people = [
+  { kind: 'test', x: 12, y: 5, dir: 'down', moving: false, t: 0, step: 0 },
+  { kind: 'me', x: 8, y: 5, dir: 'down', moving: false, t: 0, step: 0 },
+];
+let ctrl = 0, zoom = 1, showSheet = false, auto = null, turnT = 0;
+
+const blocked = (x, y) => x < 0 || y < 0 || x >= m.w || y >= m.h || solid[y][x] || people.some(p => p.x === x && p.y === y);
+function tryStep(p, d) {
+  const [dx, dy] = DIRV[d];
+  if (blocked(p.x + dx, p.y + dy)) return false;
+  Object.assign(p, { fx: p.x, fy: p.y, x: p.x + dx, y: p.y + dy, moving: true, t: 0, step: p.step ^ 1 });
+  return true;
+}
+const posOf = p => p.moving ? [p.fx + (p.x - p.fx) * p.t, p.fy + (p.y - p.fy) * p.t] : [p.x, p.y];
+
+// ---------- 自動繞著中間那張桌子走 ----------
+const LOOP = [[19, 5], [19, 14], [12, 14], [12, 5]];
+function autoDir(p) {
+  const [tx, ty] = LOOP[auto.i];
+  if (p.x === tx && p.y === ty) { auto.i = (auto.i + 1) % LOOP.length; return autoDir(p); }
+  return p.x !== tx ? (tx > p.x ? 'right' : 'left') : (ty > p.y ? 'down' : 'up');
+}
+
+// ---------- 操作：搖桿、方向鍵 ----------
+// 跟 js/world.js 一樣：手指按下的地方才出現搖桿，拖動就走，拖太遠底座跟著移動
+let padDir = null, touch = null;
+const keys = {};
+const KEYDIR = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' };
+const joy = document.getElementById('joy'), knob = document.getElementById('joyKnob');
+const JOY_R = 42, TAP_MOVE = 10;
+function joyPlace() { joy.style.left = touch.x + 'px'; joy.style.top = touch.y + 'px'; }
+cv.addEventListener('pointerdown', e => {
+  if (touch) return;
+  touch = { id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, drag: false };
+  joyPlace(); joy.classList.remove('off');
+});
+cv.addEventListener('pointermove', e => {
+  if (!touch || e.pointerId !== touch.id) return;
+  if (!touch.drag && Math.hypot(e.clientX - touch.sx, e.clientY - touch.sy) > TAP_MOVE) { touch.drag = true; joy.classList.add('on'); stopAuto(); }
+  let dx = e.clientX - touch.x, dy = e.clientY - touch.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist > JOY_R) { touch.x += dx * (1 - JOY_R / dist); touch.y += dy * (1 - JOY_R / dist); joyPlace(); dx *= JOY_R / dist; dy *= JOY_R / dist; }
+  knob.style.transform = `translate(${dx}px, ${dy}px)`;
+  padDir = !touch.drag || dist < 14 ? null : Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+});
+const joyEnd = e => { if (touch && e.pointerId === touch.id) { padDir = null; touch = null; knob.style.transform = ''; joy.classList.add('off'); joy.classList.remove('on'); } };
+cv.addEventListener('pointerup', joyEnd); cv.addEventListener('pointercancel', joyEnd);
+addEventListener('keydown', e => { const d = KEYDIR[e.key]; if (d) { keys[d] = performance.now(); stopAuto(); e.preventDefault(); } });
+addEventListener('keyup', e => { const d = KEYDIR[e.key]; if (d) delete keys[d]; });
+const heldDir = () => padDir || Object.keys(keys).sort((a, b) => keys[b] - keys[a])[0] || null;
+
+// ---------- 按鈕 ----------
+const $ = id => document.getElementById(id);
+function stopAuto() { auto = null; $('auto').classList.remove('on'); }
+$('who').onclick = () => { ctrl ^= 1; stopAuto(); $('who').textContent = '操作：' + (ctrl ? '主角' : '學姊'); };
+$('auto').onclick = () => { if (auto) return stopAuto(); auto = { i: 0 }; ctrl = 0; $('who').textContent = '操作：學姊'; $('auto').classList.add('on'); };
+$('sheet').onclick = () => { showSheet = !showSheet; $('sheet').classList.toggle('on', showSheet); };
+$('zoom').onclick = () => { zoom = zoom === 1 ? 2 : 1; $('zoom').classList.toggle('on', zoom === 2); };
+
+// ---------- 更新 ----------
+function update(dt) {
+  for (const p of people) {
+    if (!p.moving) continue;
+    p.t += dt * SPEED / CELL;
+    if (p.t >= 1) { p.t = 1; p.moving = false; }
+  }
+  const p = people[ctrl];
+  if (p.moving) return;
+  const d = auto ? autoDir(p) : heldDir();
+  if (!d) { turnT = 0; return; }
+  if (d !== p.dir) { p.dir = d; turnT = auto ? 0 : 0.08; return; }
+  if (turnT > 0) { turnT -= dt; return; }
+  tryStep(p, d);
+}
+
+// ---------- 畫面 ----------
+let W = 0, H = 0, DPR = 1;
+function resize() {
+  DPR = Math.min(devicePixelRatio || 1, 3); W = innerWidth; H = innerHeight;
+  cv.width = W * DPR; cv.height = H * DPR;
+}
+addEventListener('resize', resize); resize();
+function drawPerson(p) {
+  const { img, sh } = SHEETS[p.kind];
+  if (!img.complete || !img.naturalWidth) return;
+  const [px, py] = posOf(p), x = Math.round((px + 0.5) * CT - 8), y = Math.round((py + 1) * CT - 16);
+  const frame = p.moving && p.t < 0.5 ? (p.step ? 1 : 2) : 0;
+  const col = frame === 0 ? 1 : frame === 1 ? 0 : 2;   // 中間那格是站姿，左右兩格是跨步
+  const s = SPRITE_H / CHAR_CELL.h, w = CHAR_CELL.w * s;
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.ellipse(x + 8, y + 14.5, 5.5, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.drawImage(img, sh.x + col * CHAR_CELL.w, sh.y + sh.dirs[p.dir] * CHAR_CELL.h, CHAR_CELL.w, CHAR_CELL.h,
+    x + 8 - w / 2, y + 16 - SPRITE_H + 1, w, SPRITE_H);
+}
+function drawSheet(time) {   // 12 格放大，每個方向一行，三格輪流播放
+  if (!testSheet.complete || !testSheet.naturalWidth) return;
+  const sc = Math.min(2, (W - 32) / (CHAR_CELL.w * 4.4), (H - 80) / (CHAR_CELL.h * 4.2));
+  const cw = CHAR_CELL.w * sc, ch = CHAR_CELL.h * sc, x0 = (W - cw * 4.3) / 2, y0 = 56;
+  ctx.fillStyle = 'rgba(8,12,28,0.92)'; ctx.fillRect(x0 - 10, y0 - 10, cw * 4.3 + 20, ch * 4 + 20);
+  ctx.imageSmoothingEnabled = false;
+  const step = [0, 1, 2, 1][Math.floor(time * SPEED * 2) % 4];   // 跨步、站、另一腳跨步、站
+  ['down', 'left', 'right', 'up'].forEach((d, r) => {
+    for (let c = 0; c < 3; c++)
+      ctx.drawImage(testSheet, c * CHAR_CELL.w, r * CHAR_CELL.h, CHAR_CELL.w, CHAR_CELL.h, x0 + c * cw, y0 + r * ch, cw, ch);
+    ctx.drawImage(testSheet, step * CHAR_CELL.w, r * CHAR_CELL.h, CHAR_CELL.w, CHAR_CELL.h, x0 + 3.3 * cw, y0 + r * ch, cw, ch);
+  });
+  ctx.fillStyle = '#ffd166'; ctx.font = '13px system-ui'; ctx.textAlign = 'center';
+  ctx.fillText('動畫', x0 + 3.8 * cw, y0 - 0);
+}
+let last = performance.now(), time = 0;
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt;
+  update(dt);
+  // 鏡頭：跟遊戲一樣，室內盡量看到整個房間（放大時一半）
+  const view = Math.max(7, m.h * CELL) / zoom;
+  const k = Math.min(W, H) / (TILE * view), vw = W / k, vh = H / k, mw = m.w * CT, mh = m.h * CT;
+  const [px, py] = posOf(people[ctrl]);
+  const cx = (px + 0.5) * CT, cy = (py + 0.5) * CT;
+  const camX = mw <= vw ? (mw - vw) / 2 : Math.max(0, Math.min(cx - vw / 2, mw - vw));
+  const camY = mh <= vh ? (mh - vh) / 2 : Math.max(0, Math.min(cy - vh / 2, mh - vh));
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = '#05070d'; ctx.fillRect(0, 0, W, H);
+  ctx.setTransform(DPR * k, 0, 0, DPR * k, -camX * DPR * k, -camY * DPR * k);
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+  if (mapImg.complete && mapImg.naturalWidth) ctx.drawImage(mapImg, 0, 0, mw, mw * mapImg.naturalHeight / mapImg.naturalWidth);
+  [...people].sort((a, b) => posOf(a)[1] - posOf(b)[1]).forEach(drawPerson);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (showSheet) drawSheet(time);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
