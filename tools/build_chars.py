@@ -6,11 +6,15 @@
 列在 TURN_USE 的角色才會在遊戲裡改用三視圖；還在試的先用測試模式看看：
     python tools/build_chars.py --test assets/char_turnarounds/15_female_referee.png
 會產生 test/sprite_test.png 和 test/sprite_test.js，用瀏覽器打開 test/sprite_walk.html 就能看到走路的樣子。
+第三種是 assets/char_frames/<原圖檔名>/ 資料夾：每個姿勢一張圖（down_stand、down_step1、down_step2、
+right_*、up_*、left_*，共 12 張；沒有 left_* 就用 right_* 翻轉），測試模式一樣可以用：
+    python tools/build_chars.py --test assets/char_frames/15_female_referee
 每張原圖是 4 行 x 3 格、洋紅色背景：第 1 行朝下、最後一行朝上，中間兩行是側面（方向不一定，見 SIDES）。
 處理方式：從每一格的邊緣往內把洋紅背景去掉（有輪廓線擋住的粉紅衣服不會被去掉），
 再用腳底對齊，排進一張圖集。
 """
 import json
+import math
 import os
 import sys
 from collections import deque
@@ -100,7 +104,7 @@ UP_ROW = {}
 # 三格沒有平均排的行：直接指定切開的 x 座標（原圖像素），不然會切到頭髮
 CUT_X = {'15_female_referee': {3: [0, 68, 116, 186]}}
 # 三視圖的角色：做好之後身高幾像素（圖集一格高 104；主角約 91、大人約 88、小學生約 76）
-TURN_H = {'15_female_referee': 86}
+TURN_H = {'15_female_referee': 88}
 TURN_USE = set()   # 遊戲裡改用三視圖的角色（原圖檔名）
 # 走路第 1 格跟其他格長得不一樣的，改用第 3 格左右翻轉代替（方向：要修的那幾行）
 MIRROR_STEP = {'player_f': ['down']}
@@ -256,6 +260,79 @@ def despill(a, width=6):
     return a
 
 
+def runs(row):
+    """一列裡連續有顏色的段落：[(起, 迄), ...]"""
+    xs = np.nonzero(row)[0]
+    if not len(xs): return []
+    out, s0 = [], xs[0]
+    for a_, b_ in zip(xs, xs[1:]):
+        if b_ - a_ > 1: out.append((s0, a_)); s0 = b_
+    out.append((s0, xs[-1]))
+    return out
+
+
+def biggest(m):
+    """只留 m 裡最大的一塊"""
+    lab = np.zeros(m.shape, int); best, bn, n = 0, 0, 0
+    for sy, sx in zip(*np.nonzero(m)):
+        if lab[sy, sx]: continue
+        n += 1; lab[sy, sx] = n; q = deque([(sy, sx)]); c = 0
+        while q:
+            y, x = q.popleft(); c += 1
+            for ny, nx in ((y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)):
+                if 0 <= ny < m.shape[0] and 0 <= nx < m.shape[1] and m[ny, nx] and not lab[ny, nx]:
+                    lab[ny, nx] = n; q.append((ny, nx))
+        if c > best: best, bn = c, n
+    return lab == bn if bn else np.zeros_like(m)
+
+
+def side_stand(a, shoe=0.11):
+    """側面跨步 → 雙腳併攏站好：兩條腿各自繞著胯下轉成直立，鞋子平移到新的腳踝（保持水平）。
+    垂在腿旁邊的紅色球拍不算腿，留在原位。用原圖解析度做，做完再縮小"""
+    al = a[..., 3] > 0; H, W = al.shape
+    ys = np.nonzero(al.any(axis=1))[0]; top, bot = ys.min(), ys.max()
+    sh0 = bot - int((bot - top) * shoe)                         # 鞋子從這一列開始
+    cols = al[sh0:bot + 1].any(axis=0); xs = np.nonzero(cols)[0]
+    gaps = [x for x in range(xs.min(), xs.max()) if not cols[x]]
+    if not gaps: return a                                       # 兩隻鞋子沒分開：本來就是站姿
+    c = (gaps[0] + gaps[-1]) // 2                               # 兩隻鞋子中間
+    y0 = bot
+    while y0 > top and not al[y0, c]: y0 -= 1
+    y0 += 1                                                     # 胯下：從這一列開始兩條腿分開
+    r_, g_, b_ = (a[..., i].astype(int) for i in range(3))
+    red = al & (r_ > 140) & (g_ < 110) & (b_ < 110)
+    red[:y0 - (bot - top) // 8] = False; red[sh0:] = False
+    held = biggest(red)
+    for _ in range(4):                                          # 連球拍的深色外框一起
+        held = held | (al & (np.pad(held, 1)[2:, 1:-1] | np.pad(held, 1)[:-2, 1:-1] | np.pad(held, 1)[1:-1, 2:] | np.pad(held, 1)[1:-1, :-2]))
+    held[sh0:] = False
+    leg_m = al & ~held
+    legs = [np.zeros_like(a), np.zeros_like(a)]
+    for y in range(y0, sh0):
+        for x0, x1 in runs(leg_m[y]):
+            seg = legs[0 if (x0 + x1) / 2 < c else 1][y, x0:x1 + 1]
+            m_ = leg_m[y, x0:x1 + 1]; seg[m_] = a[y, x0:x1 + 1][m_]
+    out = a.copy(); out[y0:bot + 1] = 0
+    for i, leg in enumerate(legs):
+        m_ = leg[..., 3] > 0
+        if not m_[y0].any() or not m_[sh0 - 1].any(): return a
+        hx, hy = np.nonzero(m_[y0])[0].mean(), y0               # 髖部（轉軸）
+        ax, ay = np.nonzero(m_[sh0 - 1])[0].mean(), sh0 - 1     # 腳踝
+        ang = math.degrees(math.atan2(ax - hx, ay - hy))
+        rot = np.array(Image.fromarray(leg.astype(np.uint8)).rotate(-ang, center=(hx, hy), resample=Image.NEAREST))
+        dx, dy = int(round(hx - ax)), int(round(hy + math.hypot(ax - hx, ay - hy) - ay))
+        shoe_ = np.zeros_like(a)
+        x0, x1 = (0, c) if i == 0 else (c, W)
+        shoe_[sh0:bot + 1, x0:x1] = a[sh0:bot + 1, x0:x1]
+        moved = np.zeros_like(a)
+        moved[max(0, dy):min(H, H + dy), max(0, dx):min(W, W + dx)] = \
+            shoe_[max(0, -dy):min(H, H - dy), max(0, -dx):min(W, W - dx)]
+        for lay in (rot, moved):
+            mm = lay[..., 3] > 0; out[mm] = lay[mm]
+    out[held] = a[held]
+    return out
+
+
 def split_figures(im):
     """一排人物 → 每個人各自的範圍（用整欄都是洋紅背景的空隙切開）"""
     cols = (~magenta(im)).sum(axis=0) > im.shape[0] * 0.01
@@ -272,20 +349,19 @@ def split_figures(im):
 
 def turnaround(path, name, key):
     """三視圖 → 跟 4 行 x 3 格原圖一樣的 rows：正面、背面用站姿做走路；左邊用右邊翻轉。
-    3 個人：側面只有跨步一格（用程式把大跨步的腳併攏會斷成碎片，所以三格都用跨步）
+    3 個人：側面只有跨步一格，站姿用 side_stand() 做出來
     4 個人：側面是 跨步、站、跨步"""
     im = np.array(Image.open(path).convert('RGB')).astype(int)
     figs = [despill(cutout(c)) for c in split_figures(im)]
     assert len(figs) in (3, 4), f'{path}：找到 {len(figs)} 個人，要 3 或 4 個'
     for f in figs:   # 頭髮之間被包住的洋紅背景（沒有連到外面，cutout 去不掉）
         f[magenta(f[..., :3].astype(int)), 3] = 0
+    if len(figs) == 3:
+        figs.insert(1, side_stand(figs[1]))
     s_ = TURN_H.get(name, 86) / max(f.shape[0] for f in figs)       # 所有人用同一個比例縮小
     figs = [np.array(Image.fromarray(f).resize((max(1, round(f.shape[1] * s_)), max(1, round(f.shape[0] * s_))), Image.LANCZOS))
             for f in figs]
-    if len(figs) == 3:
-        front, walk, back = figs; stand = walk
-    else:
-        front, stand, walk, back = figs
+    front, stand, walk, back = figs
     for d_ in (FRAMES, MIRROR_STEP, UP_ROW, BORROW_BACK):   # 這些是給舊原圖用的特別處理，三視圖不用
         d_.pop(key, None)
     SIDE_PASS_WALK.discard(key)
@@ -293,6 +369,29 @@ def turnaround(path, name, key):
     SYNTH_FRONT_WALK[key] = ['down', 'up']
     side = [walk, stand, walk]
     return [[front] * 3, side, side, [back] * 3]
+
+
+def one_figure(path):
+    """一張圖只有一個人：去背，頭髮之間被包住的洋紅背景也去掉"""
+    f = despill(cutout(np.array(Image.open(path).convert('RGB')).astype(int)))
+    f[magenta(f[..., :3].astype(int)), 3] = 0
+    return f
+
+
+def frames_dir(path, name, key):
+    """每個姿勢一張圖的資料夾 → rows（下、右、左、上；每行 跨步 1、站、跨步 2）。12 張用同一個比例縮小"""
+    dirs = ['down', 'right', 'left', 'up']
+    if not os.path.exists(os.path.join(path, 'left_stand.png')): dirs.remove('left')
+    figs = {(d, f): one_figure(os.path.join(path, f'{d}_{f}.png')) for d in dirs for f in ('step1', 'stand', 'step2')}
+    s_ = TURN_H.get(name, 86) / max(figs[d, 'stand'].shape[0] for d in dirs)
+    figs = {k: np.array(Image.fromarray(f).resize((max(1, round(f.shape[1] * s_)), max(1, round(f.shape[0] * s_))), Image.LANCZOS))
+            for k, f in figs.items()}
+    for d_ in (FRAMES, MIRROR_STEP, UP_ROW, BORROW_BACK, SYNTH_FRONT_WALK):   # 每一格都是畫好的，不用特別處理
+        d_.pop(key, None)
+    SIDE_PASS_WALK.discard(key)
+    SIDES[key] = (R(1), R(2) if 'left' in dirs else L(1))
+    rows = [[figs[d, f] for f in ('step1', 'stand', 'step2')] for d in dirs]
+    return rows if 'left' in dirs else rows[:2] + [rows[1]] + rows[2:]
 
 
 def place(atlas, rows, key, bx, by):
@@ -338,10 +437,12 @@ def place(atlas, rows, key, bx, by):
 # 測試模式：只做一個三視圖角色，放到 test/，不動遊戲的圖集
 if len(sys.argv) > 2 and sys.argv[1] == '--test':
     path = sys.argv[2]
-    name = os.path.basename(path)[:-4]
+    path = path.rstrip('/')
+    name = os.path.basename(path) if os.path.isdir(path) else os.path.basename(path)[:-4]
     key = KEYS.get(name, name)
     sheet = Image.new('RGBA', (3 * CW, 4 * CH), (0, 0, 0, 0))
-    dirs = place(sheet, turnaround(path, name, key), key, 0, 0)
+    rows = frames_dir(path, name, key) if os.path.isdir(path) else turnaround(path, name, key)
+    dirs = place(sheet, rows, key, 0, 0)
     out = os.path.join(ROOT, 'test')
     sheet.save(os.path.join(out, 'sprite_test.png'))
     open(os.path.join(out, 'sprite_test.js'), 'w', encoding='utf-8', newline='\n').write(
