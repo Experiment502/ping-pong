@@ -105,10 +105,11 @@
   #pauseItems:empty { display: none; }
   /* ---------- 地圖操作 ---------- */
   #worldUI { position: fixed; inset: 0; pointer-events: none; }
-  #joy {
-    position: fixed; left: max(18px, env(safe-area-inset-left)); bottom: 18px; width: 124px; height: 124px; pointer-events: auto;
-    border-radius: 50%; background: rgba(10, 14, 30, .35); border: 3px solid rgba(255, 255, 255, .3); box-sizing: border-box; touch-action: none;
+  #joy {   /* 平常不顯示：手指按下去的地方才出現（位置由 js/world.js 設定） */
+    position: fixed; width: 124px; height: 124px; margin: -62px 0 0 -62px; pointer-events: none;
+    border-radius: 50%; background: rgba(10, 14, 30, .35); border: 3px solid rgba(255, 255, 255, .3); box-sizing: border-box;
   }
+  #joy.off { display: none; }
   #joyKnob {
     position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; pointer-events: none;
     background: rgba(255, 255, 255, .45); border: 3px solid rgba(255, 255, 255, .7); box-sizing: border-box;
@@ -266,7 +267,7 @@
 </div>
 
 <div id="worldUI" class="hidden">
-  <div id="joy" aria-label="搖桿"><div id="joyKnob"></div></div>
+  <div id="joy" class="off" aria-hidden="true"><div id="joyKnob"></div></div>
   <button id="btnMenu" aria-label="選單">☰</button>
   <div id="dlg" class="hidden"><div id="dlgText"></div><div id="dlgChoice" class="hidden"><button id="dlgYes"></button><button id="dlgNo"></button></div><div class="dlgNext">▼</div></div>
 </div>
@@ -396,7 +397,7 @@
     <ul>
       <li>在主選單按<b>🏆 冠軍之路</b>，選好難度、角色和慣用手就會進入故事（之後換角色，存檔裡的主角也會跟著換）。你是光明國小的學生，故事從你第一次上桌球課的早上開始。</li>
       <li><b>難度</b>：會調整所有對手的強度。選「簡單」對手會變弱，選「困難」對手會變強；每次進入冠軍之路都可以重新選。</li>
-      <li><b>操作</b>：拖動左下的搖桿走路，<b>點一下畫面</b>就能跟面前的人說話、調查東西（也可以直接點旁邊的人），右上的 <b>☰</b> 是選單（我的球具、存檔、回主選單）。電腦上可以用方向鍵和 Z 鍵。</li>
+      <li><b>操作</b>：手指按住畫面<b>拖動</b>就會出現搖桿、跟著方向走路，<b>點一下畫面</b>就能跟面前的人說話、調查東西（也可以直接點旁邊的人），右上的 <b>☰</b> 是選單（我的球具、存檔、回主選單）。電腦上可以用方向鍵和 Z 鍵。</li>
       <li><b>第一支球拍</b>：去學校教學樓一樓走廊盡頭的桌球體育館找陳教練，選速度型、控制型或旋轉型。</li>
       <li><b>找人比賽</b>：頭上有桌球相框圖示的人可以比賽。走到他面前點一下畫面，他會問你要不要比，選「比賽」才會開打，也可以拒絕。贏了拿獎金，輸了要付錢給對方。只有勁敵韓宇、訓導主任和校長這幾個關鍵人物，看到你會跳出「！」主動來挑戰。</li>
       <li><b>學校的關卡</b>：打敗三位老師後，訓導主任才會接受挑戰；打敗主任後，去操場找校長。打敗校長，就能代表學校去市區中心的<b>市立體育館</b>，跟裡面的報名櫃檯報名比賽。</li>

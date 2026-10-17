@@ -84,7 +84,7 @@ function worldEnter(isNew) {
   if (isNew) {
     worldSay(['媽媽：「早安！今天是你第一次上桌球課的日子喔！」',
       '媽媽：「出門往右走，經過公園就是學校。桌球體育館在教學樓一樓走廊的盡頭。」',
-      '（拖動左下的搖桿走路，點一下畫面可以跟人說話、調查東西，右上的 ☰ 是選單）']);
+      '（手指按住畫面拖動就能走路，點一下畫面可以跟人說話、調查東西，右上的 ☰ 是選單）']);
   } else if (!hasRacket() && save.story.racket) {
     worldSay(['你沒有球拍了，去市區中心的商店買一支吧。']);
   }
@@ -328,7 +328,7 @@ function shopArrival() {
 }
 
 // ---------- 操作：虛擬搖桿、點畫面、鍵盤 ----------
-let padDir = null, padId = null;
+let padDir = null;
 const keysHeld = {};
 let lastKey = null;
 const KEYDIR = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', w: 'up', s: 'down', a: 'left', d: 'right' };
@@ -337,33 +337,46 @@ function heldDir() {
   if (lastKey && keysHeld[lastKey]) return lastKey;
   return Object.keys(keysHeld).find(k => keysHeld[k]) || null;
 }
-// 搖桿：圓鈕跟著手指移動（最多推到底座邊緣），推的方向取上下左右裡最接近的那一個
+// 搖桿：平常不顯示，手指按下的地方才出現。按下後拖動＝搖桿（往上下左右裡最接近的方向走），
+// 手指拖得比底座還遠時底座跟著移動；沒有拖動就放開＝點一下（說話、調查）
 const joy = $('joy'), joyKnob = $('joyKnob');
-function joyMove(e) {
-  const r = joy.getBoundingClientRect(), max = r.width / 2 - 20;
-  let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
-  const dist = Math.hypot(dx, dy);
-  if (dist > max) { dx *= max / dist; dy *= max / dist; }
-  joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
-  padDir = dist < 14 ? null : Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
-}
-function joyReset() { padDir = null; padId = null; joyKnob.style.transform = ''; joy.classList.remove('on'); }
-joy.addEventListener('pointerdown', e => {
-  e.preventDefault(); initAudio();
-  padId = e.pointerId; joy.setPointerCapture(e.pointerId); joy.classList.add('on');
-  joyMove(e);
-});
-joy.addEventListener('pointermove', e => { if (e.pointerId === padId) joyMove(e); });
-const padEnd = e => { if (e.pointerId === padId) joyReset(); };
-joy.addEventListener('pointerup', padEnd);
-joy.addEventListener('pointercancel', padEnd);
-// 點一下畫面：跟面前的人說話、調查東西；點的是旁邊一格的人或東西，就先轉過去面向它
+const JOY_R = 42, TAP_MOVE = 10, TAP_MS = 400;
+let touch = null;   // 正在按的那根手指：{ id, x, y（底座中心）, sx, sy（按下的位置）, t, drag }
+function joyReset() { padDir = null; touch = null; joyKnob.style.transform = ''; joy.classList.add('off'); joy.classList.remove('on'); }
+function joyPlace() { joy.style.left = touch.x + 'px'; joy.style.top = touch.y + 'px'; }
 cv.addEventListener('pointerdown', e => {
   if (S.mode !== 'world' || !world.cam) return;
   initAudio();
+  if (world.dialog) { pressA(); return; }   // 對話中：按一下就是下一句
+  if (touch) return;                          // 已經有一根手指在操作
+  touch = { id: e.pointerId, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: performance.now(), drag: false };
+  joyPlace(); joy.classList.remove('off');
+});
+cv.addEventListener('pointermove', e => {
+  if (!touch || e.pointerId !== touch.id) return;
+  if (!touch.drag && Math.hypot(e.clientX - touch.sx, e.clientY - touch.sy) > TAP_MOVE) { touch.drag = true; joy.classList.add('on'); }
+  let dx = e.clientX - touch.x, dy = e.clientY - touch.y;
+  const dist = Math.hypot(dx, dy);
+  if (dist > JOY_R) {   // 底座跟著手指移動，圓鈕一直在邊緣
+    touch.x += dx * (1 - JOY_R / dist); touch.y += dy * (1 - JOY_R / dist); joyPlace();
+    dx *= JOY_R / dist; dy *= JOY_R / dist;
+  }
+  joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+  padDir = !touch.drag || dist < 14 ? null : Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+});
+const touchEnd = e => {
+  if (!touch || e.pointerId !== touch.id) return;
+  const tap = e.type === 'pointerup' && !touch.drag && performance.now() - touch.t < TAP_MS;
+  joyReset();
+  if (tap) tapAt(e.clientX, e.clientY);
+};
+cv.addEventListener('pointerup', touchEnd);
+cv.addEventListener('pointercancel', touchEnd);
+// 點一下畫面：跟面前的人說話、調查東西；點的是旁邊一格的人或東西，就先轉過去面向它
+function tapAt(cx, cy) {
   if (!world.dialog && !world.moving && !world.lock && !world.paused) {
     const { k, camX, camY } = world.cam, ct = CT();
-    const tx = Math.floor((e.clientX / k + camX) / ct), ty = Math.floor((e.clientY / k + camY) / ct);
+    const tx = Math.floor((cx / k + camX) / ct), ty = Math.floor((cy / k + camY) / ct);
     // 人物比一格高，點到頭也算（往下一格找）
     for (const [x, y] of [[tx, ty], [tx, ty + 1]]) {
       const dx = x - world.x, dy = y - world.y;
@@ -373,7 +386,7 @@ cv.addEventListener('pointerdown', e => {
     }
   }
   pressA();
-});
+}
 $('dlg').addEventListener('pointerdown', e => { e.preventDefault(); pressA(); });
 $('btnMenu').addEventListener('click', openWorldMenu);
 function openWorldMenu() {
