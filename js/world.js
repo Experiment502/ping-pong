@@ -14,7 +14,7 @@ function mapImg(id) {
   return mapImgs[id];
 }
 const world = {
-  id: 0, m: null, x: 0, y: 0, dir: 'down', moving: false, fx: 0, fy: 0, t: 0, step: 0, turnT: 0,
+  id: 0, m: null, x: 0, y: 0, dir: 'down', moving: false, fx: 0, fy: 0, t: 0, walkD: 0, turnT: 0,
   npcs: [], lock: false, dialog: null, cut: null, fade: null, flash: null, banner: 0, paused: true,
   steps: 0, bump: 0, pendingShop: false, time: 0, calm: null,
 };
@@ -165,10 +165,11 @@ function updateWorld(dt) {
 function tryStep(d) {
   const [dx, dy] = DIRV[d], nx = world.x + dx, ny = world.y + dy;
   if (blocked(nx, ny)) { if (!world.bump) { wsfx.bump(); world.bump = 0.35; } return; }
-  Object.assign(world, { fx: world.x, fy: world.y, x: nx, y: ny, moving: true, t: 0, step: world.step ^ 1 });
+  const chain = world.time - (world.arrivedAt ?? -1) < 0.05;   // 剛走完一步就接著走：動畫接下去，不然從跨步開始
+  Object.assign(world, { fx: world.x, fy: world.y, x: nx, y: ny, moving: true, t: 0, walkD: chain ? (world.walkD || 0) + cellOf() : 0 });
 }
 function arrive() {
-  world.moving = false; world.steps++;
+  world.moving = false; world.steps++; world.arrivedAt = world.time;
   const k = world.x + ',' + world.y, m = world.m;
   const w = m.warpAt[k];
   if (w) { startWarp(w); return; }
@@ -226,7 +227,7 @@ function updateCut(dt) {
   if (n.moving) { n.t += dt * SPEED / cellOf(); if (n.t >= 1) n.moving = false; return; }
   if (Math.abs(n.x - world.x) + Math.abs(n.y - world.y) > 1) {   // 走到你面前
     const [dx, dy] = DIRV[n.dir];
-    Object.assign(n, { fx: n.x, fy: n.y, x: n.x + dx, y: n.y + dy, moving: true, t: 0, step: (n.step || 0) ^ 1 });
+    Object.assign(n, { fx: n.x, fy: n.y, x: n.x + dx, y: n.y + dy, moving: true, t: 0, walkD: n.walkD == null ? 0 : n.walkD + cellOf() });
     return;
   }
   world.cut = null;
@@ -414,9 +415,17 @@ window.addEventListener('keyup', e => { const d = KEYDIR[e.key]; if (d) keysHeld
 const cellOf = () => (world.m && world.m.cell) || 1;
 const CT = () => TILE * cellOf();
 // 人物畫在哪裡：回傳一個 16x16 的框的左上角，人物的腳站在格子底部中間
+// 不取整數：一個單位在手機上有好幾個螢幕像素，取整數的話走路會一頓一頓地跳
 function personPx(o) {
   const x = o.moving ? o.fx + (o.x - o.fx) * o.t : o.x, y = o.moving ? o.fy + (o.y - o.fy) * o.t : o.y;
-  return { x: Math.round((x + 0.5) * CT() - 8), y: Math.round((y + 1) * CT() - 16) };
+  return { x: (x + 0.5) * CT() - 8, y: (y + 1) * CT() - 16 };
+}
+// 走路動畫照走過的距離算（半格地圖也是每走一格換一次）：跨步 → 站 → 另一腳跨步 → 站
+// 回傳 0 = 站、1 = 第一種跨步、2 = 另一種跨步
+function walkFrame(o) {
+  if (!o.moving) return 0;
+  const ph = ((o.walkD || 0) + o.t * cellOf()) % 2;
+  return ph < 0.5 ? 1 : ph < 1 ? 0 : ph < 1.5 ? 2 : 0;
 }
 function drawWorld(dt) {
   updateWorld(dt);
@@ -427,8 +436,9 @@ function drawWorld(dt) {
   const k = Math.min(W, H) / (TILE * view);
   const vw = W / k, vh = H / k, mw = m.w * CT(), mh = m.h * CT();
   const p = personPx(world);
-  const camX = mw <= vw ? (mw - vw) / 2 : clamp(p.x + 8 - vw / 2, 0, mw - vw);
-  const camY = mh <= vh ? (mh - vh) / 2 : clamp(p.y + 8 - vh / 2, 0, mh - vh);
+  let camX = mw <= vw ? (mw - vw) / 2 : clamp(p.x + 8 - vw / 2, 0, mw - vw);
+  let camY = mh <= vh ? (mh - vh) / 2 : clamp(p.y + 8 - vh / 2, 0, mh - vh);
+  camX = Math.round(camX * k * DPR) / (k * DPR); camY = Math.round(camY * k * DPR) / (k * DPR);   // 鏡頭對齊螢幕像素，地圖才不會糊
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.fillStyle = '#05070d'; ctx.fillRect(0, 0, W, H);
   world.cam = { k, camX, camY };   // 點畫面時用來換算點到哪一格
@@ -442,8 +452,7 @@ function drawWorld(dt) {
   ents.sort((a, b) => a.y - b.y);
   for (const e of ents) {
     const o = e.me ? world : e.n;
-    const walking = o.moving && o.t < 0.5;
-    const frame = walking ? (o.step ? 1 : 2) : 0;
+    const frame = walkFrame(o);
     const key = e.me ? (save && save.char === 'female' ? 'player_f' : 'player_m') : o.sp;
     if (!drawSprite(ctx, e.x, e.y, o.dir, frame, key)) drawPerson(ctx, e.x, e.y, o.dir, frame, e.me ? playerPal() : o.pal);
   }
