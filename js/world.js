@@ -323,8 +323,8 @@ function worldGoToShop(now) {
 }
 function shopArrival() {
   if (hasRacket()) return worldSay(['店長：「歡迎光臨！」']);
-  if (save.money >= BLADES.b_basic.price) return worldSay(['店長：「你的球拍全部壞掉了啊？挑一支新的吧！」'], openShop);
-  addRacket('b_practice', save.rubbers[0] || 'r_guard'); writeSave();
+  if (save.money >= BLADES.b_sprout_all.price) return worldSay(['店長：「你的球拍全部壞掉了啊？挑一支新的吧！」'], openShop);
+  addRacket('b_practice', save.rubbers[0] || 'r_feather'); writeSave();
   worldSay(['店長：「球拍壞了，錢又不夠嗎？」', '店長：「這支練習拍先送你用吧！要加油喔！」', '得到了「練習拍」！']);
 }
 

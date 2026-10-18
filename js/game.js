@@ -21,7 +21,7 @@ const BOT = params.has('bot');
 
 // 球具對擊球的影響（1 = 標準）。T：球飛行時間、pow：對手接球難度、spin：旋轉強度、
 // err：落點偏差與掛網、radius：擊球判定範圍、perfect：PERFECT 的範圍。生涯模式會依球拍設定
-const NEUTRAL_GEAR = { T: 1, pow: 1, spin: 1, err: 1, radius: 1, perfect: 1 };
+const NEUTRAL_GEAR = { T: 1, pow: 1, spin: 1, err: 1, radius: 1, perfect: 1, net: 1, clear: 0, recv: 1, long: false };
 let GEAR = NEUTRAL_GEAR;
 
 const DIFF = {
@@ -310,22 +310,26 @@ function playerShot(power, dirX, dirY, offset, sx, sy) {
   const inTop = ball.top, inSide = ball.side;   // 來球的旋轉
   // 揮拍方向決定旋轉：往上滑 = 上旋拉球，往下滑 = 下旋切球，橫著滑 = 帶側旋
   const up = -dirY;
-  const top = clamp(clamp(up * 1.25, -1, 1) * (0.5 + 0.5 * power) * GEAR.spin, -1, 1);
-  const side = clamp(dirX * 0.6 * Math.max(0, 1 - 2 * Math.abs(up)) * GEAR.spin, -1, 1);
+  let top = clamp(clamp(up * 1.25, -1, 1) * (0.5 + 0.5 * power) * GEAR.spin, -1, 1);
+  let side = clamp(dirX * 0.6 * Math.max(0, 1 - 2 * Math.abs(up)) * GEAR.spin, -1, 1);
+  // 長顆粒膠：自己製造的旋轉很弱，主要是把來球的旋轉反轉回去（對手的上旋變成下旋）
+  if (GEAR.long) { top = clamp(top * 0.2 - inTop * 0.7, -1, 1); side = clamp(side * 0.2 - inSide * 0.5, -1, 1); }
   let tz = top < 0 ? 1.8 + 0.5 * power : 1.95 + 0.6 * power;
   let tx = dirX * 0.5 + ball.x * 0.1;
   const err = (0.04 + offset * offset * 0.22) * GEAR.err;
   tx += rand(-err, err); tz += rand(-err, err);
   const T = (0.98 - 0.46 * power) * (1 - 0.15 * Math.max(0, top)) * (1 + 0.3 * Math.max(0, -top)) * GEAR.T;
-  let clear = 0.03;
+  let clear = 0.03 + GEAR.clear;
   // 接旋轉球：下旋平著打容易掛網；上旋往上撈會飛太遠、往下切會彈太高；側旋會讓回球往旁邊偏
+  // 膠皮硬度（GEAR.recv）：軟海綿受來球旋轉的影響比較小；長顆粒膠接下旋不容易掛網
+  const rv = GEAR.long ? 0.4 : GEAR.recv;
   let spinNet = 0;
-  if (inTop < 0) spinNet = -inTop * 0.35 * (1 - Math.abs(top));
-  if (inTop > 0 && top > 0.2) tz += inTop * top * 0.45;
-  if (inTop > 0 && top < -0.2) { tz += inTop * -top * 0.3; clear += inTop * 0.3; }
-  tx += inSide * 0.3;
-  // 打偏、揮太慢、球已經掉到桌面以下、或用錯方法接下旋，都比較容易掛網
-  const pNet = 0.03 + offset * offset * 0.25 * GEAR.err + (power < 0.12 ? 0.12 : 0) + (ball.y < TT ? 0.06 : 0) + spinNet;
+  if (inTop < 0) spinNet = -inTop * 0.35 * (1 - Math.abs(top)) * rv;
+  if (inTop > 0 && top > 0.2) tz += inTop * top * 0.45 * rv;
+  if (inTop > 0 && top < -0.2) { tz += inTop * -top * 0.3 * rv; clear += inTop * 0.3 * rv; }
+  tx += inSide * 0.3 * rv;
+  // 打偏、揮太慢、球已經掉到桌面以下、或用錯方法接下旋，都比較容易掛網；膠皮彈道高（GEAR.net 小）比較不會掛網
+  const pNet = (0.03 + offset * offset * 0.25 * GEAR.err + (power < 0.12 ? 0.12 : 0) + (ball.y < TT ? 0.06 : 0) + spinNet) * GEAR.net;
   ball.top = top; ball.side = side;
   const r = Math.random();
   if (r < pNet) hitNet(tx * 0.9, NETTOP - rand(0.02, 0.08), T * 0.5);

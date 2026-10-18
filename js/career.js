@@ -4,52 +4,108 @@
 
 const SAVE_KEY = 'fingertipPong.career.v1';
 
-// ---------- 球具（數值 1～10，5 是標準；dur 是底板的耐久度上限） ----------
-// 底板：速度、控制、甜區、耐久；膠皮：速度、旋轉、控制
+// ---------- 球具：數據照 JOOLA 官網的規格表（名稱是自創的，註解是對應的型號） ----------
+// 底板 https://joola.tw/blade-specifications/ ：速度、控制度、精準性、硬度、彈性度（1～5 分）
+// 膠皮 https://joola.tw/rubber-specifications/ ：速度（3～11）、旋轉（5～11）、彈道（3.5～10）、精準性（4～10.5）、硬度
+// 等級照 JOOLA：入門（Progressive）→ 性能（Performance）→ 職業（Professional）→ 頂級（Premium），特殊（Precision）跟性能一起開放
+// 價格、耐久度（dur）表上沒有，照等級訂；next 是「強化」可以升級成哪一款（同系列）
+const TIERS = {
+  prog: { name: '入門', open: () => true },
+  perf: { name: '性能', open: () => save.story.principal, lock: '打敗校長後開放' },
+  prec: { name: '特殊', open: () => save.story.principal, lock: '打敗校長後開放' },
+  pro:  { name: '職業', open: () => save.unlocked >= 1, lock: '開放地區比賽後' },
+  prem: { name: '頂級', open: () => save.unlocked >= 2, lock: '開放全國比賽後' },
+};
+// 強化的價錢：新款的價錢扣掉舊款六成（最少 100）
+const upCost = (from, to) => Math.max(100, Math.round((to.price - from.price * 0.6) / 10) * 10);
 const BLADES = {
-  b_gale:     { name: '疾風', spd: 7, ctl: 3, sweet: 4, dur: 60, price: 0, desc: '輕巧的攻擊型底板，球速快' },
-  b_guard:    { name: '穩守', spd: 4, ctl: 7, sweet: 7, dur: 80, price: 0, desc: '厚實的底板，甜區大、好控制' },
-  b_whirl:    { name: '迴旋', spd: 5, ctl: 5, sweet: 5, dur: 70, price: 0, desc: '彈性好、吃球深，容易製造旋轉' },
-  b_practice: { name: '練習拍', spd: 3, ctl: 5, sweet: 6, dur: 40, price: 0, hidden: true, desc: '商店老闆送的練習用球拍' },
-  b_basic:    { name: '入門拍', spd: 4, ctl: 5, sweet: 5, dur: 60, price: 250, desc: '最便宜的球拍，壞了可以先買這支' },
-  b_wood:     { name: '五夾·木心', spd: 5, ctl: 8, sweet: 8, dur: 110, price: 1200, desc: '純木五夾，手感紮實、非常耐用' },
-  b_carbon:   { name: '碳纖·雷光', spd: 9, ctl: 4, sweet: 5, dur: 90, price: 1500, desc: '加了碳纖維，球速爆發' },
-  b_alc:      { name: '芳碳·流星', spd: 8, ctl: 6, sweet: 7, dur: 130, price: 4000, desc: '芳碳纖維，速度和手感兼顧' },
-  b_pro:      { name: '冠軍·龍王', spd: 9, ctl: 8, sweet: 9, dur: 180, price: 12000, desc: '世界冠軍用的頂級底板' },
+  // 入門
+  b_sprout_all:    { name: '新芽·全能', tier: 'prog', spd: 2, ctl: 4, acc: 3.5, hard: 2.5, flex: 3.5, ply: '5 層純木', dur: 70, price: 250, next: ['b_classic_all'], desc: '最便宜的入門底板，好控制' },        // Challenger All
+  b_sprout_off:    { name: '新芽·攻擊', tier: 'prog', spd: 3, ctl: 4, acc: 3.5, hard: 3, flex: 3, ply: 'Limba 面材', dur: 70, price: 400, next: ['b_classic_off'], desc: '入門攻擊型，速度和控制兼顧' },          // Challenger Off
+  b_sprout_carbon: { name: '新芽·碳', tier: 'prog', spd: 4, ctl: 2.5, acc: 2.5, hard: 4.5, flex: 1.5, ply: '3K 碳纖維', dur: 60, price: 600, next: ['b_classic_carbon'], desc: '加了碳纖維，入門裡最快的' },     // Challenger Carbon
+  b_practice:      { name: '練習拍', tier: 'prog', spd: 2, ctl: 4, acc: 4, hard: 2.5, flex: 3.5, ply: '5 層純木', dur: 40, price: 0, hidden: true, desc: '商店老闆送的練習用球拍' },  // Challenger All Jr.
+  // 性能
+  b_classic_all:    { name: '經典·全能', tier: 'perf', spd: 2, ctl: 5, acc: 4.5, hard: 2, flex: 4, ply: 'Koto 面材．5 層純木', dur: 100, price: 900, next: ['b_hinoki5'], desc: '控制滿分，削球、防守最穩' },          // Classic All
+  b_classic_off:    { name: '經典·攻擊', tier: 'perf', spd: 3.5, ctl: 4, acc: 4, hard: 3, flex: 3.5, ply: 'Koto 面材．5 層純木', dur: 100, price: 1100, next: ['b_hinoki_carbon'], desc: 'Koto 面材質地硬，適合拉上旋' },  // Classic Off
+  b_classic_carbon: { name: '經典·碳', tier: 'perf', spd: 4, ctl: 2.5, acc: 3, hard: 4.5, flex: 1.5, ply: 'Koto 面材．3K 碳纖維', dur: 90, price: 1400, next: ['b_light_carbon'], desc: '碳纖維底板，球速快、手感硬' },  // Classic Carbon
+  // 特殊
+  b_wall: { name: '鐵壁', tier: 'prec', spd: 1.5, ctl: 5, acc: 4.5, hard: 2, flex: 4, ply: '大拍面．防守專用', dur: 120, price: 1200, desc: '拍面特別大的防守底板，適合配長顆粒膠' },   // CWX Defender
+  // 職業
+  b_hinoki5:       { name: '檜木五夾', tier: 'pro', spd: 3, ctl: 4.5, acc: 4.5, hard: 3, flex: 2.5, ply: 'Hinoki 面材．5 層純木', dur: 130, price: 3000, next: ['b_hinoki_pbo'], desc: 'Hinoki 軟中帶彈，吃球深、好製造旋轉' },  // Xylo 5
+  b_hinoki_carbon: { name: '檜心·碳', tier: 'pro', spd: 4, ctl: 4.5, acc: 4, hard: 3.5, flex: 2, ply: 'Hinoki 面材．3K 碳纖維', dur: 130, price: 4000, next: ['b_trio'], desc: '碳纖維的速度，加上 Hinoki 的手感' },     // Rossi Emotion
+  b_light_carbon:  { name: '輕碳·疾', tier: 'pro', spd: 5, ctl: 3.5, acc: 3.5, hard: 4, flex: 2, ply: 'Hinoki 面材．KL 碳纖維', dur: 120, price: 4500, next: ['b_aurora'], desc: '重量輕的碳纖維，速度滿分' },          // Santoru KL-C Inner
+  // 頂級
+  b_hinoki_pbo: { name: '檜韻 PBO', tier: 'prem', spd: 4, ctl: 4.5, acc: 4, hard: 3, flex: 2, ply: 'Hinoki 面材．PBO 碳纖維', dur: 170, price: 9000, desc: 'PBO 纖維甜區大，手感柔軟' },               // Nobilis PBO-C
+  b_trio:       { name: '三重奏 X3', tier: 'prem', spd: 4, ctl: 4.5, acc: 5, hard: 3.5, flex: 2.5, ply: 'Limba 面材．X3 複合纖維', dur: 170, price: 12000, desc: '兩種纖維交錯編織，精準度滿分' },        // Vyzaryz Trinity
+  b_aurora:     { name: '極光 PBO', tier: 'prem', spd: 5, ctl: 4.5, acc: 4.5, hard: 3, flex: 2.5, ply: 'Koto 面材．超級 PBO 纖維', dur: 180, price: 15000, desc: '速度和控制都頂尖的冠軍底板' },      // Vyzaryz Hybrid
 };
 const RUBBERS = {
-  r_gale:    { name: '疾風膠', spd: 6, spin: 4, ctl: 4, price: 0, desc: '彈性好的入門攻擊膠皮' },
-  r_guard:   { name: '穩守膠', spd: 4, spin: 4, ctl: 7, price: 0, desc: '軟硬適中，好控制' },
-  r_whirl:   { name: '迴旋膠', spd: 5, spin: 8, ctl: 4, price: 0, desc: '摩擦力強，容易製造旋轉' },
-  r_tacky:   { name: '黏性·霸旋', spd: 5, spin: 9, ctl: 5, price: 900, desc: '黏性膠皮，旋轉超強' },
-  r_tension: { name: '張力·狂速', spd: 9, spin: 6, ctl: 4, price: 1200, desc: '內能膠皮，球速快但不好控制' },
-  r_balance: { name: '均衡·風神', spd: 7, spin: 7, ctl: 7, price: 3000, desc: '各方面都很平均的高級膠皮' },
-  r_pro:     { name: '國手·天極', spd: 9, spin: 9, ctl: 8, price: 9000, desc: '國手專用的頂級膠皮' },
+  // 入門
+  r_vigor:     { name: '元氣', tier: 'prog', spd: 5, spin: 7.5, arc: 7.5, acc: 8, hard: '中', price: 300, next: ['r_vigor450'], desc: '入門裡最快的膠皮，各方面平均' },        // Energy
+  r_feather:   { name: '輕羽', tier: 'prog', spd: 3.5, spin: 7, arc: 7.5, acc: 8.5, hard: '軟', price: 300, next: ['r_feather_p'], desc: '軟海綿，好控制、不容易失誤' },        // Samba
+  r_feather_p: { name: '輕羽＋', tier: 'prog', spd: 4, spin: 7.5, arc: 9.5, acc: 9, hard: '軟', price: 500, next: ['r_feather_ice'], desc: '彈道很高，過網很安全' },               // Samba+
+  // 性能
+  r_vigor450:   { name: '元氣 450', tier: 'perf', spd: 7, spin: 7.5, arc: 7.5, acc: 7.5, hard: '中', price: 900, next: ['r_vigor48'], desc: '速度加快，彈道和控制還是很平均' },     // Maxxx 450
+  r_feather_ice: { name: '輕羽·冰', tier: 'perf', spd: 6, spin: 9, arc: 8.5, acc: 9, hard: '軟+', price: 1200, next: ['r_feather_max'], desc: '軟中帶旋轉，控制和旋轉都好' },  // Rhyzen Ice
+  r_whirl:      { name: '旋風', tier: 'perf', spd: 6, spin: 8.5, arc: 7.5, acc: 8, hard: '中', price: 900, next: ['r_whirl_fire'], desc: '摩擦力強，容易製造旋轉' },             // Rhyzen CMD
+  r_whirl_fire: { name: '旋風·火', tier: 'perf', spd: 8, spin: 9, arc: 6.5, acc: 8.5, hard: '中+', price: 1500, next: ['r_whirl_zg'], desc: '旋轉加上速度的攻擊膠皮' },     // Rhyzen Fire
+  r_blast:      { name: '爆裂', tier: 'perf', spd: 7.5, spin: 7.5, arc: 4.5, acc: 4, hard: '硬', price: 800, next: ['r_blast500'], desc: '硬海綿球速快，但彈道低、不好控制' },   // X-Plode
+  r_blast500:   { name: '爆裂 500', tier: 'perf', spd: 8.5, spin: 7.5, arc: 5, acc: 5, hard: '硬+', price: 1300, next: ['r_blast_pro'], desc: '超硬海綿，速度更快' },          // Maxxx 500
+  // 特殊
+  r_spike:   { name: '刺蝟（長顆粒）', tier: 'prec', type: 'long', spd: 3, spin: 9, arc: 6, acc: 9, hard: '硬', price: 1000, desc: '長顆粒膠：自己不太能製造旋轉，但會把對手的旋轉反轉回去' },  // CWX
+  r_gold_soft: { name: '金弦·柔', tier: 'prec', spd: 7, spin: 9, arc: 8.5, acc: 8.5, hard: '軟', price: 1200, next: ['r_gold_ps'], desc: '高摩擦膠面加軟海綿，旋轉強又好控制' },  // Tango Ultra
+  // 職業
+  r_vigor48:  { name: '元氣 48', tier: 'pro', spd: 8.5, spin: 9, arc: 7.5, acc: 9, hard: '中+', price: 3000, next: ['r_vigor_max'], desc: '職業選手愛用的平均型膠皮' },          // Rhyzer 48
+  r_whirl_zg: { name: '旋風 ZG', tier: 'pro', spd: 8.5, spin: 11, arc: 7, acc: 8.5, hard: '硬+', price: 3500, next: ['r_whirl_max'], desc: '旋轉滿分，超硬海綿撐住強力摩擦' },   // Rhyzen ZGR
+  r_gold_ps:  { name: '金弦 PS', tier: 'pro', spd: 8, spin: 10, arc: 7.5, acc: 8.5, hard: '硬', price: 3000, next: ['r_gold'], desc: '高摩擦膠面，旋轉和速度兼顧' },             // Golden Tango PS
+  r_gold:     { name: '金弦', tier: 'pro', spd: 7, spin: 11, arc: 6, acc: 8, hard: '硬', price: 3800, desc: '最強摩擦的膠面，旋轉滿分' },                                       // Golden Tango
+  r_blast_pro: { name: '爆裂 Pro', tier: 'pro', spd: 9.5, spin: 9, arc: 3.5, acc: 7, hard: '硬', price: 3500, next: ['r_blast_max'], desc: '彈道很低、很平，球又快又直' },   // Rhyzer Pro 50
+  // 頂級
+  r_vigor_max:   { name: '元氣·極', tier: 'prem', spd: 10, spin: 10, arc: 7.5, acc: 10.5, hard: '中+', price: 9000, desc: '頂級全能膠皮，速度、旋轉、精準都頂尖' },  // Dynaryz ACC
+  r_feather_max: { name: '輕羽·極', tier: 'prem', spd: 8, spin: 10, arc: 8.5, acc: 10.5, hard: '中', price: 8000, desc: '頂級控制型膠皮，精準度最高' },              // Dynaryz CMD
+  r_whirl_max:   { name: '旋風·極', tier: 'prem', spd: 10, spin: 10.5, arc: 7.5, acc: 10, hard: '硬', price: 9500, desc: '頂級旋轉膠皮，旋轉和速度都頂尖' },           // Dynaryz ZGR
+  r_blast_max:   { name: '爆裂·極', tier: 'prem', spd: 11, spin: 10, arc: 5.5, acc: 8, hard: '硬', price: 10000, desc: '速度最快的膠皮，世界頂尖的攻擊力' },          // Dynaryz AGR
 };
 const ITEMS = {
   tape: { name: '修補膠帶', heal: 30, price: 80, desc: '比賽中也能用，球拍耐久 +30' },
   kit:  { name: '球拍保養組', heal: 80, price: 250, desc: '比賽中也能用，球拍耐久 +80' },
 };
 const STARTERS = [
-  { name: '速度型', blade: 'b_gale', rubber: 'r_gale', desc: '球速快、對手難接，但落點比較不穩，也比較不耐用。' },
-  { name: '控制型', blade: 'b_guard', rubber: 'r_guard', desc: '甜區大、落點穩，又耐用，最適合新手。' },
-  { name: '旋轉型', blade: 'b_whirl', rubber: 'r_whirl', desc: '旋轉強，打出的拉球、切球更難接。' },
+  { name: '速度型', blade: 'b_sprout_carbon', rubber: 'r_blast', desc: '碳纖維底板加上硬海綿膠皮。球速最快，但彈道低、容易掛網，落點也不穩。' },
+  { name: '控制型', blade: 'b_sprout_all', rubber: 'r_feather', desc: '純木底板加上軟海綿。球比較慢，但落點穩、不容易失誤，最適合新手。' },
+  { name: '旋轉型', blade: 'b_sprout_off', rubber: 'r_whirl', desc: '摩擦力強的膠皮，打出的拉球、切球更難接。' },
 ];
+// 舊版存檔的球具換成新的
+const OLD_GEAR = {
+  b_gale: 'b_sprout_carbon', b_guard: 'b_sprout_all', b_whirl: 'b_sprout_off', b_basic: 'b_sprout_all', b_wood: 'b_classic_all',
+  b_carbon: 'b_classic_carbon', b_alc: 'b_hinoki_carbon', b_pro: 'b_aurora',
+  r_gale: 'r_vigor', r_guard: 'r_feather', r_tacky: 'r_gold_soft', r_tension: 'r_blast', r_balance: 'r_vigor48', r_pro: 'r_vigor_max',
+};
 
-// 球拍的數值：速度看底板和膠皮、旋轉看膠皮、控制兩者平均、甜區看底板
+// 換算成遊戲的 1～10 分（5 是標準）
+const HARDNESS = ['軟', '軟+', '中', '中+', '硬', '硬+'];
+const lin = (v, a, b) => 1 + (v - a) * 9 / (b - a);   // 表上 a～b 換成 1～10
+function bladeScore(b) { return { spd: b.spd * 2, ctl: b.ctl * 2, sweet: b.acc * 2, flex: b.flex * 2 }; }
+function rubberScore(u) { return { spd: lin(u.spd, 3, 11), spin: lin(u.spin, 5, 11), arc: lin(u.arc, 3.5, 10), ctl: lin(u.acc, 4, 10.5) }; }
+// 球拍的數值：速度看底板和膠皮、旋轉看膠皮（底板彈性好的吃球深，加一點）、控制看底板控制度和膠皮精準性、甜區看底板精準性
 function gearStats(r) {
-  const b = BLADES[r.blade], u = RUBBERS[r.rubber];
-  return { spd: b.spd * 0.6 + u.spd * 0.4, spin: u.spin, ctl: (b.ctl + u.ctl) / 2, sweet: b.sweet };
+  const b = bladeScore(BLADES[r.blade]), u = rubberScore(RUBBERS[r.rubber]);
+  return { spd: (b.spd + u.spd) / 2, spin: u.spin * 0.8 + b.flex * 0.2, ctl: (b.ctl + u.ctl) / 2, sweet: b.sweet, arc: u.arc,
+    hard: HARDNESS.indexOf(RUBBERS[r.rubber].hard), long: RUBBERS[r.rubber].type === 'long' };
 }
 // 換成比賽裡的效果（給 game.js 的 GEAR）
 function gearMods(st) {
   return {
     T: 1 - 0.03 * (st.spd - 5),            // 速度：球飛得比較快
-    pow: 1 + 0.06 * (st.spd - 5),          // 速度：對手比較難接
+    pow: 1 + 0.06 * (st.spd - 5) - 0.015 * (st.arc - 5),   // 速度：對手比較難接；彈道高的球比較好接
     spin: 1 + 0.07 * (st.spin - 5),        // 旋轉：打出的旋轉更強
     err: Math.max(0.5, 1 - 0.07 * (st.ctl - 5)),   // 控制：落點偏差、掛網比較少
     radius: 1 + 0.035 * (st.sweet - 5),    // 甜區：擊球判定範圍
     perfect: 1 + 0.08 * (st.sweet - 5),    // 甜區：PERFECT 的範圍
+    net: Math.max(0.6, 1 - 0.05 * (st.arc - 5)),   // 彈道：彈道高比較不會掛網
+    clear: 0.004 * (st.arc - 5),           // 彈道：過網高度
+    recv: 0.85 + 0.05 * st.hard,           // 硬度：軟海綿接旋轉球比較不受影響，硬的反之
+    long: st.long,                         // 長顆粒：把對手的旋轉反轉回去
   };
 }
 
@@ -110,21 +166,29 @@ function buildAI(o) {
 // ---------- 存檔（存在這支手機的瀏覽器裡） ----------
 let save = null;
 function newSave(char) {
-  return { v: 2, char, money: 200, rackets: [], racket: 0, rubbers: [], items: { tape: 0, kit: 0 },
+  return { v: 3, char, money: 200, rackets: [], racket: 0, rubbers: [], items: { tape: 0, kit: 0 },
     unlocked: 0, cleared: {}, wins: 0, losses: 0, titles: 0, earned: 0, run: null, champion: false,
     story: { racket: false, principal: false }, beaten: {}, pos: Object.assign({}, WORLD_SPAWN), mapv: WORLD_MAP_VERSION };
 }
 function loadSave() {
   let s = null;
   try { const t = localStorage.getItem(SAVE_KEY); s = t ? JSON.parse(t) : null; } catch (e) { s = null; }
+  const up = id => OLD_GEAR[id] || id;
   if (s && (s.v || 1) < 2) {   // 第一版（只有選單）的存檔：球具換成球拍，劇情當作已經完成
-    s.rackets = (s.blades || []).map(b => ({ blade: b, rubber: s.rubber, dur: BLADES[b] ? BLADES[b].dur : 60 }))
+    s.rackets = (s.blades || []).map(b => ({ blade: up(b), rubber: up(s.rubber), dur: BLADES[up(b)] ? BLADES[up(b)].dur : 60 }))
       .filter(r => BLADES[r.blade] && RUBBERS[r.rubber]);
     s.racket = Math.max(0, (s.blades || []).indexOf(s.blade));
     s.items = { tape: 0, kit: 0 };
     s.story = { racket: s.rackets.length > 0, principal: true };
     s.beaten = {}; s.pos = Object.assign({}, WORLD_SPAWN); s.v = 2;
     delete s.blades; delete s.blade; delete s.rubber;
+  }
+  if (s && s.v < 3) {   // 第二版：球具換成照 JOOLA 數據的新款
+    s.rackets = s.rackets.map(r => ({ blade: up(r.blade), rubber: up(r.rubber), dur: r.dur })).filter(r => BLADES[r.blade] && RUBBERS[r.rubber]);
+    for (const r of s.rackets) r.dur = Math.min(r.dur, BLADES[r.blade].dur);
+    s.rubbers = [...new Set(s.rubbers.map(up))].filter(id => RUBBERS[id]);
+    s.racket = Math.min(s.racket, Math.max(0, s.rackets.length - 1));
+    s.v = 3;
   }
   return s;
 }
@@ -196,9 +260,13 @@ const portrait = c => `assets/${c}_portrait.png`;
 function bars(rows) {
   return rows.map(([k, v]) => `<div class="stat"><span>${k}</span><i><b style="width:${v * 10}%"></b></i><span>${Number.isInteger(v) ? v : v.toFixed(1)}</span></div>`).join('');
 }
-const bladeBars = b => bars([['速度', b.spd], ['控制', b.ctl], ['甜區', b.sweet]]);
-const rubberBars = r => bars([['速度', r.spd], ['旋轉', r.spin], ['控制', r.ctl]]);
-const racketBars = r => { const st = gearStats(r); return bars([['速度', st.spd], ['旋轉', st.spin], ['控制', st.ctl], ['甜區', st.sweet]]); };
+// 長條是換算後的遊戲分數（1～10），下面一行是規格表上的原始數字
+const tierTag = x => `<span class="tag">${TIERS[x.tier].name}</span>`;
+const bladeBars = b => { const sc = bladeScore(b); return bars([['速度', sc.spd], ['控制', sc.ctl], ['甜區', sc.sweet], ['彈性', sc.flex]])
+  + `<div class="sub spec">規格（1～5）：速度 ${b.spd}．控制 ${b.ctl}．精準 ${b.acc}．硬度 ${b.hard}．彈性 ${b.flex}．${b.ply}</div>`; };
+const rubberBars = u => { const sc = rubberScore(u); return bars([['速度', sc.spd], ['旋轉', sc.spin], ['彈道', sc.arc], ['控制', sc.ctl]])
+  + `<div class="sub spec">規格：速度 ${u.spd}．旋轉 ${u.spin}．彈道 ${u.arc}．精準 ${u.acc}．硬度 ${u.hard}${u.type === 'long' ? '．長顆粒' : ''}</div>`; };
+const racketBars = r => { const st = gearStats(r); return bars([['速度', st.spd], ['旋轉', st.spin], ['控制', st.ctl], ['甜區', st.sweet], ['彈道', st.arc]]); };
 const durBar = r => `<div class="stat dur"><span>耐久</span><i><b style="width:${100 * r.dur / maxDur(r)}%"></b></i><span>${r.dur}/${maxDur(r)}</span></div>`;
 const curEvent = () => EVENT_TIERS[save.run.t].events[save.run.e];
 const roundName = (ev, i) => (i === ev.ops.length - 1 ? '決賽' : `第 ${i + 1} 輪`);
@@ -315,26 +383,42 @@ const VIEWS = {
 
   shop() {
     const tab = ui.shopTab;
+    // 商品照等級排；還沒開放的等級顯示解鎖條件
+    const order = Object.keys(TIERS), sorted = o => Object.entries(o).filter(([, x]) => x.price > 0 && !x.hidden)
+      .sort((a, b) => order.indexOf(a[1].tier) - order.indexOf(b[1].tier) || a[1].price - b[1].price);
+    const buyBtn = (id, x) => !TIERS[x.tier].open() ? `<button disabled>🔒 ${TIERS[x.tier].lock}</button>`
+      : `<button class="buy" data-act="buy" data-arg="${id}"${save.money >= x.price ? '' : ' disabled'}>購買 ${money(x.price)}</button>`;
     let items = '';
     if (tab === 'racket') {
-      items = Object.entries(BLADES).filter(([, b]) => b.price > 0 && !b.hidden).map(([id, b]) => `<div class="card"><h3>${b.name}</h3>
-        <div class="sub">${b.desc}</div>${bladeBars(b)}<div class="sub">耐久度 ${b.dur}</div>
-        <button class="buy" data-act="buy" data-arg="${id}"${save.money >= b.price ? '' : ' disabled'}>購買 ${money(b.price)}</button></div>`).join('');
+      items = sorted(BLADES).map(([id, b]) => `<div class="card"><h3>${tierTag(b)}${b.name}</h3>
+        <div class="sub">${b.desc}</div>${bladeBars(b)}<div class="sub">耐久度 ${b.dur}</div>${buyBtn(id, b)}</div>`).join('');
     } else if (tab === 'rubber') {
-      items = Object.entries(RUBBERS).filter(([, u]) => u.price > 0).map(([id, u]) => {
-        const has = save.rubbers.includes(id);
-        return `<div class="card"><h3>${u.name}</h3><div class="sub">${u.desc}</div>${rubberBars(u)}
-          ${has ? '<button disabled>已擁有</button>' : `<button class="buy" data-act="buy" data-arg="${id}"${save.money >= u.price ? '' : ' disabled'}>購買 ${money(u.price)}</button>`}</div>`;
+      items = sorted(RUBBERS).map(([id, u]) => `<div class="card"><h3>${tierTag(u)}${u.name}</h3><div class="sub">${u.desc}</div>${rubberBars(u)}
+        ${save.rubbers.includes(id) ? '<button disabled>已擁有</button>' : buyBtn(id, u)}</div>`).join('');
+    } else if (tab === 'enhance') {
+      const r = curRacket();
+      const up = (kind, from, ids, table, barsOf) => (ids || []).map(id => {
+        const to = table[id], cost = upCost(from, to);
+        const btn = !TIERS[to.tier].open() ? `<button disabled>🔒 ${TIERS[to.tier].lock}</button>`
+          : `<button class="buy" data-act="enhance" data-arg="${kind}:${id}"${save.money >= cost ? '' : ' disabled'}>強化 ${money(cost)}</button>`;
+        return `<div class="card"><h3>${from.name} → ${tierTag(to)}${to.name}</h3><div class="sub">${to.desc}</div>${barsOf(to)}${btn}</div>`;
       }).join('');
+      items = !r ? '<div class="note">你還沒有球拍。</div>'
+        : (up('b', BLADES[r.blade], BLADES[r.blade].next, BLADES, b => bladeBars(b) + `<div class="sub">耐久度 ${b.dur}（強化後修到全滿）</div>`)
+          || `<div class="note">底板「${BLADES[r.blade].name}」已經是這個系列最高階了。</div>`)
+        + (up('r', RUBBERS[r.rubber], RUBBERS[r.rubber].next, RUBBERS, rubberBars)
+          || `<div class="note">膠皮「${RUBBERS[r.rubber].name}」已經是這個系列最高階了。</div>`);
     } else {
       items = Object.entries(ITEMS).map(([id, it]) => `<div class="card"><h3>${it.name}</h3><div class="sub">${it.desc}</div>
         <div class="sub">持有 ${save.items[id]} 個</div>
         <button class="buy" data-act="buy" data-arg="${id}"${save.money >= it.price ? '' : ' disabled'}>購買 ${money(it.price)}</button></div>`).join('');
     }
-    const tip = { racket: '新球拍會先裝上你目前用的膠皮，可以在「我的球具」換。', rubber: '買了膠皮會自動換到正在用的球拍上，舊膠皮也會留著。',
+    const r = curRacket();
+    const tip = { racket: '新底板會先裝上你目前用的膠皮，可以在「我的球具」換。', rubber: '買了膠皮會自動換到正在用的球拍上，舊膠皮也會留著。',
+      enhance: `把使用中的球拍（${r ? racketName(r) : '沒有'}）升級成同系列更高階的款式，舊的折價六成抵用。`,
       item: '修理道具在比賽中按暫停就能使用。去恢復中心修理是免費的。' }[tab];
     return `<h1>🛒 商店</h1><div class="cbar"><span class="money">💰 ${money(save.money)}</span><span>${itemsText()}</span></div>
-      <div class="cbtns tabs">${[['racket', '球拍'], ['rubber', '膠皮'], ['item', '修理道具']].map(([k, n]) =>
+      <div class="cbtns tabs">${[['racket', '底板'], ['rubber', '膠皮'], ['enhance', '強化'], ['item', '修理道具']].map(([k, n]) =>
         `<button class="${tab === k ? 'sel' : ''}" data-act="tab" data-arg="${k}">${n}</button>`).join('')}</div>
       <p class="sub center">${tip}</p>
       ${ui.msg ? `<div class="note">${ui.msg}</div>` : ''}
@@ -413,11 +497,12 @@ const ACTS = {
       if (save.money < b.price) return;
       save.money -= b.price;
       const r = curRacket();
-      addRacket(id, r ? r.rubber : (save.rubbers[0] || 'r_guard'));
+      if (!TIERS[b.tier].open()) return;
+      addRacket(id, r ? r.rubber : (save.rubbers[0] || 'r_feather'));
       ui.msg = `買了「${b.name}」，已經換上了！`;
     } else if (RUBBERS[id]) {
       const u = RUBBERS[id];
-      if (save.money < u.price || save.rubbers.includes(id)) return;
+      if (save.money < u.price || save.rubbers.includes(id) || !TIERS[u.tier].open()) return;
       save.money -= u.price; save.rubbers.push(id);
       if (curRacket()) curRacket().rubber = id;
       ui.msg = `買了「${u.name}」，已經裝到球拍上了！`;
@@ -429,6 +514,23 @@ const ACTS = {
     }
     writeSave();
     careerShow();
+  },
+  // 強化：「b:底板」或「r:膠皮」，把使用中球拍的底板或膠皮升級成同系列的下一款
+  enhance(arg) {
+    const [kind, id] = arg.split(':'), r = curRacket();
+    if (!r) return;
+    const table = kind === 'b' ? BLADES : RUBBERS, from = table[kind === 'b' ? r.blade : r.rubber], to = table[id];
+    const cost = upCost(from, to);
+    if (!(from.next || []).includes(id) || !TIERS[to.tier].open() || save.money < cost) return;
+    save.money -= cost;
+    if (kind === 'b') { r.blade = id; r.dur = maxDur(r); }
+    else {
+      const old = r.rubber; r.rubber = id;
+      if (!save.rackets.some(x => x.rubber === old)) save.rubbers = save.rubbers.filter(x => x !== old);   // 舊膠皮換掉了
+      if (!save.rubbers.includes(id)) save.rubbers.push(id);
+    }
+    ui.msg = `「${from.name}」強化成「${to.name}」了！`;
+    writeSave(); careerShow();
   },
   gear() { ui.msg = ''; careerShow('gear'); },
   useRacket(i) { save.racket = +i; writeSave(); careerShow(); },
