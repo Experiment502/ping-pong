@@ -39,28 +39,15 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
 const other = s => (s === 'player' ? 'ai' : 'player');
 
-// ---------- 角色圖（assets/sprites.png 的切格：x, y, w, h, 腳的中心 x） ----------
+// ---------- 對手的圖（js/battle.js，由 tools/build_chars.py --battle 產生） ----------
+// SPR[男或女][動作] = 每一格 [x, y, w, h, 身體中心 x]；padOff(動作) = 球拍在身體中心左右幾像素（圖上像素）
 const sheet = new Image();
-sheet.src = 'assets/sprites.png';
-const SPR = {
-  male: {
-    idle: [[2,2,76,106,37.4], [80,2,75,106,37.4], [157,2,74,106,36.2], [233,2,78,106,41.4], [313,2,77,106,37]],
-    moveR: [[2,110,86,94,34.7], [90,110,85,95,33.1], [177,110,87,95,34.8], [266,110,85,95,36.7], [353,110,88,95,35.7]],
-    moveL: [[2,207,85,97,50.6], [89,207,86,98,51.1], [177,207,80,97,45.7], [259,207,85,97,50.4], [346,207,78,97,43.5]],
-    fore: [[2,307,93,96,34.4], [97,307,92,95,35.1], [191,307,96,95,33.8], [289,307,79,95,32.7]],
-    back: [[2,405,90,95,34.8], [94,405,100,95,34], [196,405,100,95,34.8], [298,405,78,95,32.5], [378,405,68,95,33.1]],
-  },
-  female: {
-    idle: [[2,502,76,106,38.7], [80,502,74,106,36.5], [156,502,74,106,34.3], [232,502,74,106,35.4], [308,502,73,106,33.4]],
-    moveR: [[2,610,87,94,35.5], [91,610,85,94,34.1], [178,610,83,94,35.6], [263,610,82,96,34.7], [347,610,83,94,35.5]],
-    moveL: [[2,708,80,97,46.4], [84,708,86,96,51.7], [172,708,84,96,49.7], [258,708,84,97,49.7], [344,708,80,97,45.8]],
-    fore: [[2,807,98,96,33.1], [102,807,97,95,34.6], [201,807,93,95,33.3], [296,807,84,95,32.1]],
-    back: [[2,905,89,95,34.3], [93,905,101,95,34.3], [196,905,99,95,34.7], [297,905,76,95,32.8], [375,905,67,95,32.5]],
-  },
-};
-// 各動作裡球拍相對腳中心的水平位置（圖上像素）
-const PAD_OFF = { idle: -27, moveR: 37, moveL: -39, fore: 46, back: 47 };
-const MPP = 1.3 / 106;           // 角色圖每像素 = 幾公尺
+sheet.src = BATTLE.img;
+const SPR = BATTLE.spr;
+const padOff = anim => BATTLE.pad[oppChar()][anim];
+// 對手的頭像：有新圖就用新圖，沒有就用舊的
+const oppPortrait = c => BATTLE.portrait[c] || `assets/${c}_portrait.png`;
+const MPP = 1.3 / 106;           // 角色圖每像素 = 幾公尺（男對手站著 106 像素高）
 const OPP_Z = TL + 0.7, OPP_FEET = 0.32;   // 對手站的位置（下半身被球桌擋住）
 
 // ---------- 攝影機（低解析度座標） ----------
@@ -466,7 +453,7 @@ function updateOpp(dt) {
   opp.lastX = ai.x;
   opp.vs += (vx - opp.vs) * Math.min(1, dt * 10);
   opp.t += dt;
-  const frames = SPR.male;
+  const frames = SPR[oppChar()];
   if (opp.hitT >= 0) {
     opp.hitT += dt;
     const f = Math.floor(opp.hitT / 0.075);
@@ -479,7 +466,7 @@ function updateOpp(dt) {
     if (anim !== opp.anim) { opp.anim = anim; opp.t = 0; }
     opp.frame = Math.floor(opp.t * (moving ? 10 : 6)) % frames[anim].length;
   }
-  const target = ai.x - PAD_OFF[opp.anim] * MPP * 0.75;
+  const target = ai.x - padOff(opp.anim) * MPP * 0.75;
   opp.bx = clamp(opp.bx + (target - opp.bx) * Math.min(1, dt * 7), -2, 2);
 }
 
@@ -1210,7 +1197,7 @@ function matchOver() {
   ball.visible = false;
   const won = S.pg > S.ag;
   if (S.careerMatch) { show('pause', false); if (won) crowd.cheer(1); careerMatchEnd(won, false); return; }
-  $('goImg').src = 'assets/' + (won ? S.char : oppChar()) + '_portrait.png';
+  $('goImg').src = won ? 'assets/' + S.char + '_portrait.png' : oppPortrait(oppChar());
   $('goTitle').textContent = won ? '🏆 你贏了這場比賽！' : '對手贏了，再接再厲！';
   $('goScore').textContent = S.pg + ' - ' + S.ag;
   $('goSub').textContent = '各局比分：' + S.games.join('、');

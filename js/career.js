@@ -265,7 +265,7 @@ const VIEWS = {
 
   event() {
     const ev = EVENT_TIERS[ui.evT].events[ui.evE];
-    const ops = ev.ops.map((o, i) => `<div class="card opp"><img src="${portrait(o.char)}" alt="">
+    const ops = ev.ops.map((o, i) => `<div class="card opp"><img src="${oppPortrait(o.char)}" alt="">
       <div><div class="sub">${roundName(ev, i)}</div><h3>${o.name}</h3>
       <div><span class="tag">${STYLES[o.style].name}</span><span class="stars">${stars(o.str)}</span></div>
       <div class="sub">${STYLES[o.style].tip}</div></div></div>`).join('');
@@ -284,7 +284,7 @@ const VIEWS = {
   round() {
     const ev = curEvent(), o = ev.ops[save.run.round], r = curRacket();
     return `<h1>${ev.name}．${roundName(ev, save.run.round)}</h1>
-      <div class="card opp big"><img src="${portrait(o.char)}" alt="">
+      <div class="card opp big"><img src="${oppPortrait(o.char)}" alt="">
         <div><h3>VS ${o.name}</h3><div><span class="tag">${STYLES[o.style].name}</span><span class="stars">${stars(o.str)}</span></div>
         <div class="sub">${STYLES[o.style].tip}</div><div class="sub">賽制：${formatName(ev.bestOf)}</div>
         ${r ? `<div class="sub">使用球拍：${racketName(r)}（耐久 ${r.dur}/${maxDur(r)}）</div>` : ''}</div></div>

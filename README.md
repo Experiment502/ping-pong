@@ -106,7 +106,8 @@ python -m http.server 8000
 │   ├── build_chars.py       # 把走路圖去背、對齊，產生 assets/chars.png 和 js/chars.js
 │   └── upscale_maps.py      # 把地圖放大 3 倍並銳化，產生 assets/maps/hd/*.webp（遊戲讀這個）
 ├── assets/
-│   ├── sprites.png          # 角色動畫圖（待機、左右移動、正手、反手）
+│   ├── battle.png           # 對戰模式的對手（tools/build_chars.py --battle 產生）
+│   ├── sprites.png          # 舊的對戰角色圖（目前沒用到，留著參考揮拍動作）
 │   ├── referee.png          # 猜球用的裁判動畫圖
 │   ├── male_portrait.png    # 男選手立繪
 │   ├── female_portrait.png  # 女選手立繪

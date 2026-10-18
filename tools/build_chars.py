@@ -9,6 +9,9 @@
 第三種是 assets/char_frames/<原圖檔名>/ 資料夾：每個姿勢一張圖（down_stand、down_step1、down_step2、
 right_*、up_*、left_*，共 12 張；沒有 left_* 就用 right_* 翻轉），測試模式一樣可以用：
     python tools/build_chars.py --test assets/char_frames/15_female_referee
+對戰模式的對手（面向玩家）也用這些資料夾，見 BATTLE：
+    python tools/build_chars.py --battle
+會產生 assets/battle.png 和 js/battle.js。
 每張原圖是 4 行 x 3 格、洋紅色背景：第 1 行朝下、最後一行朝上，中間兩行是側面（方向不一定，見 SIDES）。
 處理方式：從每一格的邊緣往內把洋紅背景去掉（有輪廓線擋住的粉紅衣服不會被去掉），
 再用腳底對齊，排進一張圖集。
@@ -249,13 +252,13 @@ def swap_arms(a):
 
 def despill(a, width=6):
     """高解析度原圖的邊緣常混到洋紅背景（例如頭髮尖端偏紫）：離邊緣 width 像素內、偏洋紅的像素去掉。
-    粉紅色的鞋子、髮圈紅比藍多很多，不會被當成洋紅"""
+    粉紅色的鞋子、髮圈紅比藍多很多，不會被當成洋紅（只去掉紅、藍差不多的紫色）"""
     a = a.copy(); al = a[..., 3] > 0
     near = ~al
     for _ in range(width):
         near = near | np.pad(near, 1)[2:, 1:-1] | np.pad(near, 1)[:-2, 1:-1] | np.pad(near, 1)[1:-1, 2:] | np.pad(near, 1)[1:-1, :-2]
     r, g, b = (a[..., i].astype(int) for i in range(3))
-    mag = al & near & (np.minimum(r, b) - g > 30) & (np.abs(r - b) < 60)
+    mag = al & near & (np.minimum(r, b) - g > 30) & (np.abs(r - b) < 40) & (g < np.minimum(r, b) * 0.5)
     a[mag, 3] = 0
     return a
 
@@ -355,7 +358,7 @@ def turnaround(path, name, key):
     figs = [despill(cutout(c)) for c in split_figures(im)]
     assert len(figs) in (3, 4), f'{path}：找到 {len(figs)} 個人，要 3 或 4 個'
     for f in figs:   # 頭髮之間被包住的洋紅背景（沒有連到外面，cutout 去不掉）
-        f[magenta(f[..., :3].astype(int)), 3] = 0
+        f[pure_bg(f), 3] = 0
     if len(figs) == 3:
         figs.insert(1, side_stand(figs[1]))
     s_ = TURN_H.get(name, 86) / max(f.shape[0] for f in figs)       # 所有人用同一個比例縮小
@@ -371,10 +374,16 @@ def turnaround(path, name, key):
     return [[front] * 3, side, side, [back] * 3]
 
 
+def pure_bg(a):
+    """幾乎就是背景的純洋紅 #FF00FF（被頭髮包住、沒有連到外面的背景）；粉紅色的髮圈、衣服綠色比較多，不會被當成背景"""
+    r, g, b = (a[..., i].astype(int) for i in range(3))
+    return (r > 200) & (b > 200) & (g < 60)
+
+
 def one_figure(path):
     """一張圖只有一個人：去背，頭髮之間被包住的洋紅背景也去掉"""
     f = despill(cutout(np.array(Image.open(path).convert('RGB')).astype(int)))
-    f[magenta(f[..., :3].astype(int)), 3] = 0
+    f[pure_bg(f), 3] = 0
     return f
 
 
@@ -432,6 +441,101 @@ def place(atlas, rows, key, bx, by):
             # 腳底對齊格子底部、左右置中
             atlas.alpha_composite(fim, (bx + c * CW + (CW - fim.width) // 2, by + r * CH + CH - fim.height))
     return dirs
+
+
+# 對戰模式的對手：男、女各用哪個資料夾、第一張準備姿勢有多高（原圖像素；遊戲裡 106 像素 = 1.3 公尺）
+# 主角（男）還沒有對戰姿勢，男對手也先用學姊
+BATTLE = {'male': ('15_female_referee', 108), 'female': ('15_female_referee', 108)}
+# 每個動作用哪幾張圖（都是正面）。準備和移動每張重複兩次，晃動才不會太快
+BATTLE_ANIMS = {
+    'idle': ['ready_1', 'ready_1', 'ready_2', 'ready_2'],
+    'moveR': ['move_1', 'move_1', 'move_2', 'move_2'],
+    'moveL': ['move_1', 'move_1', 'move_2', 'move_2'],
+    'fore': ['fore_1', 'fore_2', 'fore_3', 'fore_4'],
+    'back': ['back_1', 'back_2', 'back_3', 'back_4'],
+}
+# 資料夾裡還沒有對戰姿勢時，先用站姿和走路代替
+BATTLE_FALLBACK = {
+    'idle': ['down_stand'],
+    'moveR': ['down_step1', 'down_stand', 'down_step2', 'down_stand'],
+    'moveL': ['down_step1', 'down_stand', 'down_step2', 'down_stand'],
+    'fore': ['down_stand'],
+    'back': ['down_stand'],
+}
+# 球拍位置用哪一張算（對手接球時讓這裡對準球）：揮拍用擊球那一張，其他用第一張
+BATTLE_PAD = {'fore': 'fore_3', 'back': 'back_3'}
+
+
+def paddle_x(a):
+    """球拍（紅色、在身體下半部最大的一塊）的中心 x；找不到就回傳 None。
+    紅色衣服的角色：最大那塊如果是從上半身延伸下來的就是衣服，跳過它找下一塊"""
+    al = a[..., 3] > 0
+    r_, g_, b_ = (a[..., i].astype(int) for i in range(3))
+    red = al & (r_ > 150) & (g_ < 90) & (b_ < 90)
+    red[:int(a.shape[0] * 0.25)] = False                      # 揮拍時球拍會舉到胸口，從身高 25% 開始找
+    m = biggest(red)
+    if m.any() and np.nonzero(m)[0].min() < a.shape[0] * 0.5 and np.nonzero(m)[0].max() > a.shape[0] * 0.5:
+        m = biggest(red & ~m)
+    return float(np.nonzero(m)[1].mean()) if m.any() else None
+
+
+if len(sys.argv) > 1 and sys.argv[1] == '--battle':
+    figs, pad, anims = {}, {}, {}
+    for ch, (folder, h) in BATTLE.items():
+        path = os.path.join(ROOT, 'assets', 'char_frames', folder)
+        full = all(os.path.exists(os.path.join(path, n + '.png')) for v in BATTLE_ANIMS.values() for n in v)
+        anims[ch] = BATTLE_ANIMS if full else BATTLE_FALLBACK
+        names_ = sorted({n for v in anims[ch].values() for n in v})
+        raw = {n: one_figure(os.path.join(path, n + '.png')) for n in names_}
+        s_ = h / raw[anims[ch]['idle'][0]].shape[0]            # 全部用同一個比例縮小
+        figs[ch] = {n: np.array(Image.fromarray(f).resize((max(1, round(f.shape[1] * s_)), max(1, round(f.shape[0] * s_))), Image.LANCZOS))
+                    for n, f in raw.items()}
+    # 每個人每張圖排一行：x, y, w, h, 身體中心 x（遊戲裡叫「腳的中心」，站的位置對齊這裡）
+    PADX = 2
+    uniq = {BATTLE[ch][0]: fs for ch, fs in figs.items()}       # 每個資料夾只排一次
+    width = max(sum(f.shape[1] + PADX for f in fs.values()) for fs in uniq.values()) + PADX
+    height = sum(max(f.shape[0] for f in fs.values()) + PADX for fs in uniq.values()) + PADX
+    sheet = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+    spr, y = {}, PADX
+    done = {}
+    for ch, fs in figs.items():
+        if BATTLE[ch][0] in done:                              # 跟前一個人用同一個資料夾：共用同一行
+            spr[ch], pad[ch] = done[BATTLE[ch][0]]
+            continue
+        x, cells = PADX, {}
+        for n, f in fs.items():
+            al = f[..., 3] > 0
+            # 身體中心：用頭（上面 10%～40%）的左右中心，走路抬腳、球拍伸出去都不會讓它偏掉（紅色的球拍不算）
+            r_, g_, b_ = (f[..., i].astype(int) for i in range(3))
+            band = (al & ~((r_ > 150) & (g_ < 90) & (b_ < 90)))[int(f.shape[0] * 0.1):int(f.shape[0] * 0.4)]
+            foot = float(np.nonzero(band)[1].mean())
+            sheet.alpha_composite(Image.fromarray(f), (x, y))
+            cells[n] = [x, y, f.shape[1], f.shape[0], round(foot, 1)]
+            px = paddle_x(f)
+            pad.setdefault(ch, {})[n] = round(px - foot, 1) if px is not None else 0
+            x += f.shape[1] + PADX
+        y += max(f.shape[0] for f in fs.values()) + PADX
+        spr[ch] = {a_: [cells[n] for n in ns] for a_, ns in anims[ch].items()}
+        pad[ch] = {a_: pad[ch][BATTLE_PAD[a_] if anims[ch] is BATTLE_ANIMS and a_ in BATTLE_PAD else ns[0]]
+                   for a_, ns in anims[ch].items()}
+        done[BATTLE[ch][0]] = (spr[ch], pad[ch])
+    sheet.save(os.path.join(ROOT, 'assets', 'battle.png'), optimize=True)
+    # 頭像：資料夾裡有 portrait.png 就去背、縮成 300 像素高，存到 assets/portraits/<資料夾>.png
+    portraits = {}
+    for ch, (folder, _) in BATTLE.items():
+        src_ = os.path.join(ROOT, 'assets', 'char_frames', folder, 'portrait.png')
+        if not os.path.exists(src_): continue
+        f = one_figure(src_); s_ = 300 / f.shape[0]
+        out = os.path.join(ROOT, 'assets', 'portraits', folder + '.png')
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        Image.fromarray(f).resize((round(f.shape[1] * s_), 300), Image.LANCZOS).save(out, optimize=True)
+        portraits[ch] = 'assets/portraits/' + folder + '.png'
+    open(os.path.join(ROOT, 'js', 'battle.js'), 'w', encoding='utf-8', newline='\n').write(
+        "'use strict';\n// 由 tools/build_chars.py --battle 產生：對戰模式的對手（assets/battle.png）\n"
+        "// spr：每個動作的格子 [x, y, w, h, 身體中心 x]；pad：球拍在身體中心左右幾像素；portrait：對手的頭像\n"
+        f"const BATTLE = {json.dumps(dict(img='assets/battle.png', spr=spr, pad=pad, portrait=portraits))};\n")
+    print('寫入 assets/battle.png', sheet.size, '和 js/battle.js')
+    sys.exit(0)
 
 
 # 測試模式：只做一個三視圖角色，放到 test/，不動遊戲的圖集
