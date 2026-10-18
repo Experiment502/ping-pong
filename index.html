@@ -176,12 +176,11 @@
 <button id="pause" class="hidden" aria-label="暫停"></button>
 
 <div id="menuOv" class="overlay">
-  <!-- 一步一步選：模式 → 難度 → 角色 → 慣用手 →（直接比賽）局數 /（練習模式）球路 -->
+  <!-- 一步一步選：模式 → 難度 → 角色 → 慣用手 →（直接比賽）局數。練習模式從比賽的暫停選單或冠軍之路的 ☰ 選單進入 -->
   <div class="col menuWrap">
     <h1>🏓 指尖桌球</h1>
     <div class="col step" id="stepMode">
       <div class="modeBtns" id="modes">
-        <button data-m="practice" class="main">🎯 練習模式</button>
         <button data-m="match" class="main">🏓 直接比賽</button>
         <button data-m="career" class="main careerBtn">🏆 冠軍之路</button>
       </div>
@@ -230,20 +229,23 @@
       </div>
       <button class="backBtn helpBtn2">← 返回</button>
     </div>
-    <div class="col step hidden" id="stepPrKind">
-      <div class="stepTitle"><span class="stepMode"></span>選擇練習球路</div>
-      <div class="btns choice" id="prKinds">
-        <button data-k="random" class="sel">隨機</button>
-        <button data-k="drive">平擊</button>
-        <button data-k="loop">上旋拉球</button>
-        <button data-k="chop">下旋切球</button>
-        <button data-k="side">側旋</button>
-        <button data-k="short">短球</button>
-        <button data-k="lob">吊高球</button>
-      </div>
-      <button class="backBtn helpBtn2">← 返回</button>
-    </div>
   </div>
+</div>
+
+<!-- 練習模式：選球路（從比賽的暫停選單或冠軍之路的 ☰ 選單打開） -->
+<div id="practiceOv" class="overlay hidden">
+  <h1>🎯 練習模式</h1>
+  <div class="lbl" id="prNote"></div>
+  <div class="btns choice" id="prKinds">
+    <button data-k="random" class="sel">隨機</button>
+    <button data-k="drive">平擊</button>
+    <button data-k="loop">上旋拉球</button>
+    <button data-k="chop">下旋切球</button>
+    <button data-k="side">側旋</button>
+    <button data-k="short">短球</button>
+    <button data-k="lob">吊高球</button>
+  </div>
+  <button id="prBack" class="helpBtn2">← 返回</button>
 </div>
 
 <div id="tossOv" class="overlay hidden">
@@ -275,6 +277,7 @@
 <div id="pauseOv" class="overlay hidden">
   <h1>暫停</h1>
   <button id="resumeBtn" class="main">繼續</button>
+  <button id="practiceBtn">🎯 練習模式</button>
   <div id="pauseItems" class="btns"></div>
   <div class="btns">
     <button class="helpBtn">📖 遊戲說明</button>
@@ -387,10 +390,11 @@
 
     <h2>八、練習模式</h2>
     <ul>
-      <li>在主選單按<b>🎯 練習模式</b>，選好難度、角色和慣用手後，再選要練的球路：隨機、平擊、上旋拉球、下旋切球、側旋、短球或吊高球。</li>
+      <li><b>直接比賽</b>時按上方中間的暫停，或在<b>冠軍之路</b>的地圖上按右上的 <b>☰</b>，選<b>🎯 練習模式</b>，再選要練的球路：隨機、平擊、上旋拉球、下旋切球、側旋、短球或吊高球。</li>
+      <li>從直接比賽進入練習，那場比賽會結束。冠軍之路的練習用你現在的球拍，但不會磨損。</li>
       <li>對手會一直送同一種球過來，不會回擊。你的球落在對手那半邊就算成功。</li>
       <li>上方會顯示成功數、目前連續成功數（STREAK）和最佳紀錄（BEST）。</li>
-      <li>畫面下方會提示這種球該怎麼接。想結束練習，按上方中間的暫停，再選「回主選單」。</li>
+      <li>畫面下方會提示這種球該怎麼接。想結束練習，按上方中間的暫停，再選「結束練習」：從直接比賽來的會回主選單，從冠軍之路來的會回到 ☰ 選單。</li>
     </ul>
 
     <h2>九、冠軍之路（故事模式）</h2>

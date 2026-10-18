@@ -1129,10 +1129,10 @@ function draw(dt) {
 const $ = id => document.getElementById(id);
 const show = (id, on) => $(id).classList.toggle('hidden', !on);
 
-// ---------- 主選單：模式 → 難度 → 角色 → 慣用手 →（直接比賽）局數 /（練習模式）球路 ----------
+// ---------- 主選單：模式 → 難度 → 角色 → 慣用手 →（直接比賽）局數 ----------
 let menuMode = 'match';
-const MODE_NAME = { practice: '🎯 練習模式', match: '🏓 直接比賽', career: '🏆 冠軍之路' };
-const MENU_STEPS = ['stepMode', 'stepDiff', 'stepChar', 'stepHand', 'stepBestOf', 'stepPrKind'];
+const MODE_NAME = { match: '🏓 直接比賽', career: '🏆 冠軍之路' };
+const MENU_STEPS = ['stepMode', 'stepDiff', 'stepChar', 'stepHand', 'stepBestOf'];
 function menuStep(id) {
   MENU_STEPS.forEach(x => show(x, x === id));
   document.querySelectorAll('.stepMode').forEach(x => { x.textContent = MODE_NAME[menuMode]; });
@@ -1141,7 +1141,7 @@ function menuStep(id) {
 }
 function menuHome() { menuStep('stepMode'); show('menuOv', true); }
 // 每一步「返回」上一步
-const MENU_BACK = { stepDiff: 'stepMode', stepChar: 'stepDiff', stepHand: 'stepChar', stepBestOf: 'stepHand', stepPrKind: 'stepHand' };
+const MENU_BACK = { stepDiff: 'stepMode', stepChar: 'stepDiff', stepHand: 'stepChar', stepBestOf: 'stepHand' };
 document.querySelectorAll('.backBtn').forEach(b => {
   b.addEventListener('click', () => menuStep(MENU_BACK[b.closest('.step').id]));
 });
@@ -1155,15 +1155,40 @@ function menuChoice(sel, apply, next) {
     });
   });
 }
-menuChoice('#modes button', b => { menuMode = b.dataset.m; S.practice = menuMode === 'practice'; }, () => menuStep('stepDiff'));
+menuChoice('#modes button', b => { menuMode = b.dataset.m; S.practice = false; }, () => menuStep('stepDiff'));
 menuChoice('#diffs button', b => { S.diff = b.dataset.d; }, () => menuStep('stepChar'));
 menuChoice('.char', b => { S.char = b.dataset.c; }, () => menuStep('stepHand'));
 menuChoice('#hands button', b => { S.hand = b.dataset.h; paddle.init = false; }, () => {
   if (menuMode === 'career') careerOpen();
-  else menuStep(menuMode === 'practice' ? 'stepPrKind' : 'stepBestOf');
+  else menuStep('stepBestOf');
 });
 menuChoice('#bestOf button', b => { S.bestOf = Number(b.dataset.n); }, openToss);
-menuChoice('#prKinds button', b => { S.prKind = b.dataset.k; }, openToss);
+
+// ---------- 練習模式：從直接比賽的暫停選單（那場比賽就結束）或冠軍之路的 ☰ 選單（用自己的球拍、不會磨損）進入 ----------
+// S.prFrom：'match' 或 'career'，結束練習時回到那裡
+function openPractice(from) {
+  S.prFrom = from;
+  $('prNote').textContent = from === 'career' ? '用你現在的球拍練習，球拍不會磨損。' : '選好球路後，目前這場比賽會結束，改成練習。';
+  show('pauseOv', false); show('practiceOv', true);
+}
+$('prBack').addEventListener('click', () => {
+  show('practiceOv', false);
+  if (S.prFrom === 'career') careerShow('hub'); else show('pauseOv', true);
+});
+menuChoice('#prKinds button', b => { S.prKind = b.dataset.k; }, () => {
+  show('practiceOv', false);
+  S.practice = true;
+  if (S.prFrom === 'career') { careerHide(); S.diff = 'normal'; }
+  startGame();
+  if (S.prFrom === 'career') applyGear();   // 冠軍之路：用自己的球拍
+});
+$('practiceBtn').addEventListener('click', () => openPractice('match'));
+function endPractice() {
+  S.practice = false; ball.visible = false;
+  show('pauseOv', false); show('pause', false);
+  if (S.prFrom === 'career') { S.mode = 'world'; GEAR = NEUTRAL_GEAR; careerShow('hub'); return; }   // 回到 ☰ 選單
+  S.mode = 'menu'; menuHome();
+}
 document.querySelectorAll('.soundBtn').forEach(b => {
   b.addEventListener('click', () => {
     S.sound = !S.sound;
@@ -1181,7 +1206,7 @@ function startGame(first) {
     firstServer: fs, server: fs, msgT: 0, lastHitter: null,
     prHits: 0, prTotal: 0, streak: 0, bestStreak: 0, rally: 0 });
   if (!S.careerMatch) { GEAR = NEUTRAL_GEAR; S.oppChar = null; S.oppName = null; }
-  $('quitBtn').textContent = S.careerMatch ? '棄權（這場算輸）' : '回主選單';
+  $('quitBtn').textContent = S.careerMatch ? '棄權（這場算輸）' : S.practice ? '結束練習' : '回主選單';
   if (S.practice) { S.firstServer = 'ai'; S.server = 'ai'; }   // 練習模式一直由對手送球
   else showMsg(fs === 'player' ? '你先發球' : '對手先發球', 'GAME 1', '#ffd166', 1.4);
   Object.assign(ai, { x: 0, y: 1.0, attempted: false });
@@ -1207,6 +1232,7 @@ function matchOver() {
 }
 
 function toMenu() {
+  if (S.practice) { endPractice(); return; }
   if (S.careerMatch) {   // 生涯比賽中途離開＝棄權
     S.mode = 'over'; ball.visible = false;
     show('pauseOv', false); show('pause', false);
@@ -1357,17 +1383,15 @@ document.querySelectorAll('.helpBtn').forEach(b => {
   });
 });
 $('helpClose').addEventListener('click', () => { show('helpOv', false); show(helpFrom, true); });
-$('pause').addEventListener('click', () => {
-  if (S.mode !== 'play') return;
+function openPause() {
   S.mode = 'pause'; show('pauseOv', true);
+  show('practiceBtn', !S.careerMatch && !S.practice);   // 直接比賽才能從這裡改成練習
   if (typeof careerPauseItems === 'function') careerPauseItems();
-});
+}
+$('pause').addEventListener('click', () => { if (S.mode === 'play') openPause(); });
 $('resumeBtn').addEventListener('click', () => { S.mode = 'play'; show('pauseOv', false); last = performance.now(); });
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && S.mode === 'play') {
-    S.mode = 'pause'; show('pauseOv', true);
-    if (typeof careerPauseItems === 'function') careerPauseItems();
-  }
+  if (document.hidden && S.mode === 'play') openPause();
 });
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 200));

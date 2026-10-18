@@ -241,7 +241,7 @@ const VIEWS = {
         : `<div class="note">你還沒有球拍。${save.story.racket ? '去市區中心的商店買一支吧！' : '去學校一樓走廊盡頭的桌球體育館找陳教練吧！'}</div>`}
       ${save.run ? `<div class="note">你在「${curEvent().name}」打到${roundName(curEvent(), save.run.round)}了，回市立體育館繼續比賽吧！</div>` : ''}
       <div class="cbtns"><button class="main" data-act="world">▶ 回到地圖</button>
-        ${r ? '<button data-act="gear">🎒 我的球具</button>' : ''}<button data-act="saveNow">💾 存檔</button></div>
+        ${r ? '<button data-act="gear">🎒 我的球具</button>' : ''}<button data-act="practice">🎯 練習模式</button><button data-act="saveNow">💾 存檔</button></div>
       <div class="cbtns"><button data-act="exit">↩ 回主選單</button>${reset}</div>`;
   },
 
@@ -388,6 +388,7 @@ const ACTS = {
   exit: careerClose,
   world() { ui.msg = ''; careerHide(); worldResume(); },
   hub() { ui.msg = ''; careerShow('hub'); },
+  practice() { ui.msg = ''; careerHide(); openPractice('career'); },
   saveNow() { worldSavePos(); writeSave(); ui.msg = '💾 已經存檔了！'; careerShow('hub'); },
   events() { careerShow('events'); },
   event(arg) { [ui.evT, ui.evE] = arg.split(',').map(Number); careerShow('event'); },
