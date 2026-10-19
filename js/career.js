@@ -9,7 +9,7 @@ const SAVE_KEY = 'fingertipPong.career.v1';
 // 膠皮 https://joola.tw/rubber-specifications/ ：速度（3～11）、旋轉（5～11）、彈道（3.5～10）、精準性（4～10.5）、硬度
 // 等級照 JOOLA：入門（Progressive）→ 性能（Performance）→ 職業（Professional）→ 頂級（Premium），特殊（Precision）跟性能一起開放
 // 價格、耐久度（dur）表上沒有，照等級訂；next 是「強化」可以升級成哪一款（同系列）
-const TIERS = {
+const GEAR_TIERS = {
   prog: { name: '入門', open: () => true },
   perf: { name: '性能', open: () => save.story.principal, lock: '打敗校長後開放' },
   prec: { name: '特殊', open: () => save.story.principal, lock: '打敗校長後開放' },
@@ -261,7 +261,7 @@ function bars(rows) {
   return rows.map(([k, v]) => `<div class="stat"><span>${k}</span><i><b style="width:${v * 10}%"></b></i><span>${Number.isInteger(v) ? v : v.toFixed(1)}</span></div>`).join('');
 }
 // 長條是換算後的遊戲分數（1～10），下面一行是規格表上的原始數字
-const tierTag = x => `<span class="tag">${TIERS[x.tier].name}</span>`;
+const tierTag = x => `<span class="tag">${GEAR_TIERS[x.tier].name}</span>`;
 const bladeBars = b => { const sc = bladeScore(b); return bars([['速度', sc.spd], ['控制', sc.ctl], ['甜區', sc.sweet], ['彈性', sc.flex]])
   + `<div class="sub spec">規格（1～5）：速度 ${b.spd}．控制 ${b.ctl}．精準 ${b.acc}．硬度 ${b.hard}．彈性 ${b.flex}．${b.ply}</div>`; };
 const rubberBars = u => { const sc = rubberScore(u); return bars([['速度', sc.spd], ['旋轉', sc.spin], ['彈道', sc.arc], ['控制', sc.ctl]])
@@ -384,9 +384,9 @@ const VIEWS = {
   shop() {
     const tab = ui.shopTab;
     // 商品照等級排；還沒開放的等級顯示解鎖條件
-    const order = Object.keys(TIERS), sorted = o => Object.entries(o).filter(([, x]) => x.price > 0 && !x.hidden)
+    const order = Object.keys(GEAR_TIERS), sorted = o => Object.entries(o).filter(([, x]) => x.price > 0 && !x.hidden)
       .sort((a, b) => order.indexOf(a[1].tier) - order.indexOf(b[1].tier) || a[1].price - b[1].price);
-    const buyBtn = (id, x) => !TIERS[x.tier].open() ? `<button disabled>🔒 ${TIERS[x.tier].lock}</button>`
+    const buyBtn = (id, x) => !GEAR_TIERS[x.tier].open() ? `<button disabled>🔒 ${GEAR_TIERS[x.tier].lock}</button>`
       : `<button class="buy" data-act="buy" data-arg="${id}"${save.money >= x.price ? '' : ' disabled'}>購買 ${money(x.price)}</button>`;
     let items = '';
     if (tab === 'racket') {
@@ -399,7 +399,7 @@ const VIEWS = {
       const r = curRacket();
       const up = (kind, from, ids, table, barsOf) => (ids || []).map(id => {
         const to = table[id], cost = upCost(from, to);
-        const btn = !TIERS[to.tier].open() ? `<button disabled>🔒 ${TIERS[to.tier].lock}</button>`
+        const btn = !GEAR_TIERS[to.tier].open() ? `<button disabled>🔒 ${GEAR_TIERS[to.tier].lock}</button>`
           : `<button class="buy" data-act="enhance" data-arg="${kind}:${id}"${save.money >= cost ? '' : ' disabled'}>強化 ${money(cost)}</button>`;
         return `<div class="card"><h3>${from.name} → ${tierTag(to)}${to.name}</h3><div class="sub">${to.desc}</div>${barsOf(to)}${btn}</div>`;
       }).join('');
@@ -497,12 +497,12 @@ const ACTS = {
       if (save.money < b.price) return;
       save.money -= b.price;
       const r = curRacket();
-      if (!TIERS[b.tier].open()) return;
+      if (!GEAR_TIERS[b.tier].open()) return;
       addRacket(id, r ? r.rubber : (save.rubbers[0] || 'r_feather'));
       ui.msg = `買了「${b.name}」，已經換上了！`;
     } else if (RUBBERS[id]) {
       const u = RUBBERS[id];
-      if (save.money < u.price || save.rubbers.includes(id) || !TIERS[u.tier].open()) return;
+      if (save.money < u.price || save.rubbers.includes(id) || !GEAR_TIERS[u.tier].open()) return;
       save.money -= u.price; save.rubbers.push(id);
       if (curRacket()) curRacket().rubber = id;
       ui.msg = `買了「${u.name}」，已經裝到球拍上了！`;
@@ -521,7 +521,7 @@ const ACTS = {
     if (!r) return;
     const table = kind === 'b' ? BLADES : RUBBERS, from = table[kind === 'b' ? r.blade : r.rubber], to = table[id];
     const cost = upCost(from, to);
-    if (!(from.next || []).includes(id) || !TIERS[to.tier].open() || save.money < cost) return;
+    if (!(from.next || []).includes(id) || !GEAR_TIERS[to.tier].open() || save.money < cost) return;
     save.money -= cost;
     if (kind === 'b') { r.blade = id; r.dur = maxDur(r); }
     else {

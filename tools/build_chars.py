@@ -445,7 +445,7 @@ def place(atlas, rows, key, bx, by):
 
 # 對戰模式的對手：男、女各用哪個資料夾、第一張準備姿勢有多高（原圖像素；遊戲裡 106 像素 = 1.3 公尺）
 # 主角（男）還沒有對戰姿勢，男對手也先用學姊
-BATTLE = {'male': ('15_female_referee', 108), 'female': ('15_female_referee', 108)}
+BATTLE = {'male': ('player_m', 108), 'female': ('15_female_referee', 108)}
 # 每個動作用哪幾張圖（都是正面）。準備和移動每張重複兩次，晃動才不會太快
 BATTLE_ANIMS = {
     'idle': ['ready_1', 'ready_1', 'ready_2', 'ready_2'],
