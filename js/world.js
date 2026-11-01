@@ -238,7 +238,7 @@ function startTrainerBattle(n) { world.lock = true; world.flash = { t: 0, n }; }
 function beginTrainerBattle(n) {
   const t = n.d;
   world.calm = t.id;   // 比完之後，這個人在你離開這張地圖之前不會再衝過來（想再比可以點畫面找他）
-  careerStartBattle({ kind: 'trainer', op: { name: t.name, char: t.char, style: t.style, str: t.str }, bestOf: 1, pts: t.spot ? 11 : 5, trainer: t });   // 韓宇、主任、校長打 11 分，一般路人打 5 分就好
+  careerStartBattle({ kind: 'trainer', op: { name: t.name, char: t.char, sprite: t.sprite, style: t.style, str: t.str }, bestOf: 1, pts: t.spot ? 11 : 5, trainer: t });   // 韓宇、主任、校長打 11 分，一般路人打 5 分就好
 }
 
 // ---------- 點畫面（鍵盤 Z）：說話、調查 ----------

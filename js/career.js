@@ -574,7 +574,7 @@ function careerStartBattle(cfg) {
   if (!hasRacket()) return;
   DIFF.career = buildAI(cfg.op);
   Object.assign(S, { diff: 'career', bestOf: cfg.bestOf, pts: cfg.pts || 11, practice: false, char: save.char,
-    oppChar: cfg.op.char, oppName: cfg.op.name, careerMatch: true, careerKind: cfg.kind, careerTrainer: cfg.trainer || null });
+    oppChar: cfg.op.sprite || cfg.op.char, oppName: cfg.op.name, careerMatch: true, careerKind: cfg.kind, careerTrainer: cfg.trainer || null });
   applyGear();
   careerHide();
   worldHideUI();
