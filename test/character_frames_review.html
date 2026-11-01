@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>角色原圖步行預覽</title>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:24px;background:#171b27;color:#eef1fa;font:16px/1.5 system-ui,sans-serif}main{max-width:1100px;margin:auto}h1{font-size:24px}p{color:#bfc8dc}nav{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:20px 0}select,button{font:inherit;padding:8px;border-radius:6px;border:1px solid #76839c;background:#252d40;color:inherit}button{cursor:pointer}label{display:inline-flex;gap:6px;align-items:center}.directions{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}figure{margin:0}figcaption{text-align:center;padding:6px;font-size:14px}.stage{position:relative;aspect-ratio:1;background:#f0f}.stage img{position:absolute;width:100%;height:100%;image-rendering:pixelated}.stage img[hidden]{display:none}.guides .stage:after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(to right,transparent calc(50% - .5px),#0ff 50%,transparent calc(50% + .5px)),linear-gradient(to bottom,transparent calc(var(--top) - .5px),#0ff var(--top),transparent calc(var(--top) + .5px)),linear-gradient(to bottom,transparent calc(90% - .5px),#0ff 90%,transparent calc(90% + .5px))}#frames{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}#frames img{width:100%;display:block;image-rendering:pixelated}#frames a{color:#b5d7ff}#status{min-height:24px}#status.error{color:#ffb2ac}details{margin-top:30px}summary{cursor:pointer}@media(max-width:650px){body{padding:14px}.directions{grid-template-columns:repeat(2,1fr)}figcaption{font-size:12px}#frames{grid-template-columns:repeat(3,1fr)}}
+</style>
+<main>
+<h1>角色原圖步行預覽</h1>
+<p id="description">每個方向依序播放「跨步 1 → 站立 → 跨步 2 → 站立」。直接讀取角色資料夾中的 PNG。青線標示設定的頭頂、腳底 90% 與左右中心，方便檢查位置偏移。</p>
+<p><a href="character_frames_review.html">步行原圖</a> · <a href="character_frames_review.html?mode=battle">對戰原圖</a></p>
+<nav>
+<label>角色 <select id="character"></select></label>
+<button id="play">暫停</button><button id="next">下一格</button>
+<label>速度 <input id="speed" type="range" min="100" max="600" step="50" value="250"><output id="speedValue">250 ms</output></label>
+<label><input id="guides" type="checkbox" checked>定位線</label>
+</nav>
+<p id="status" role="status"></p>
+<div id="animations" class="directions guides"></div>
+<details><summary>檢查全部 12 張原圖（點圖開啟）</summary><div id="frames"></div></details>
+<p>這是原圖檢查頁，尚未套用遊戲切圖、去背或尺寸校正。</p>
+</main>
+<script>
+'use strict';
+const characters = [{"folder":"player_m","name":"主角（男）","top":36},{"folder":"player_f","name":"主角（女）","top":36},{"folder":"rival","name":"勁敵 韓宇","top":36},{"folder":"15_female_referee","name":"桌球社學姊","top":26},{"folder":"coach","name":"陳教練","top":20},{"folder":"senior_m","name":"三年級學長","top":34},{"folder":"teacher_lin","name":"班導 林老師","top":20},{"folder":"teacher_pe","name":"體育老師","top":20},{"folder":"teacher_art","name":"美術老師","top":20},{"folder":"director","name":"訓導主任","top":20},{"folder":"principal","name":"校長","top":22},{"folder":"mom","name":"媽媽","top":20},{"folder":"grandpa","name":"老爺爺","top":24},{"folder":"grandma","name":"老奶奶","top":26},{"folder":"aunt","name":"中年婦女","top":20},{"folder":"office_m","name":"上班族男子","top":20},{"folder":"office_w","name":"上班族女子","top":20},{"folder":"high_m","name":"高中男生","top":22},{"folder":"high_f","name":"高中女生","top":22},{"folder":"kid_m","name":"小學男生","top":36},{"folder":"kid_f","name":"小學女生","top":36},{"folder":"referee_m","name":"男性桌球裁判","top":20}];
+const battle = new URLSearchParams(location.search).get('mode') === 'battle';
+const directions = battle
+  ? [['ready','準備',2],['move','側併步',2],['fore','正手',4],['back','反手',4]]
+  : [['down','正面',3],['right','朝右',3],['up','背面',3],['left','朝左',3]];
+const poses = ['stand','step1','step2'], cycle = [1,0,2,0];
+const $ = id => document.getElementById(id);
+if (battle) {
+  document.title = document.querySelector('h1').textContent = '角色原圖對戰預覽';
+  $('description').textContent = '準備與側併步各循環播放 2 張，正、反手各依序播放 4 張。青線標示頭頂、腳底 90% 與左右中心，可暫停逐格檢查右手持拍和人物位置。';
+}
+const select = $('character'), animations = $('animations'), frames = $('frames');
+for (const c of characters) select.add(new Option(c.name,c.folder));
+select.value = 'coach';
+let groups = [], tick = 0, running = true, timer, selection = 0;
+function paint() {
+  groups.forEach(group => group.forEach((img,index) => {img.hidden = index !== (battle ? tick % group.length : cycle[tick]);}));
+}
+function startTimer() {
+  clearInterval(timer);
+  timer = setInterval(() => {if(running){tick=(tick+1)%cycle.length;paint();}},Number($('speed').value));
+}
+function choose() {
+  const version = ++selection, c = characters.find(c => c.folder === select.value);
+  let loaded = 0, failed = 0, dimensions = new Set();
+  animations.replaceChildren(); frames.replaceChildren(); groups=[];tick=0;
+  animations.style.setProperty('--top',c.top+'%');
+  const status = () => {
+    if(version!==selection)return;
+    $('status').textContent = c.name+'：'+loaded+'/12 張已載入'+(failed?'，'+failed+' 張載入失敗':'')+'；原圖尺寸 '+[...dimensions].join('、');
+    $('status').classList.toggle('error',failed>0);
+  };
+  for(const [direction,label,count] of directions){
+    const figure=document.createElement('figure'),stage=document.createElement('div'),caption=document.createElement('figcaption'),group=[];
+    stage.className='stage';caption.textContent=label;figure.append(stage,caption);animations.append(figure);
+    for(const pose of (battle ? Array.from({length:count},(_,i)=>String(i+1)) : poses)){
+      const src='../assets/char_frames/'+c.folder+'/'+direction+'_'+pose+'.png',img=new Image();
+      img.alt=c.name+' '+label+' '+pose;
+      img.onload=()=>{loaded++;dimensions.add(img.naturalWidth+'×'+img.naturalHeight);status();};
+      img.onerror=()=>{failed++;status();};img.src=src;stage.append(img);group.push(img);
+      const thumb=document.createElement('figure'),link=document.createElement('a'),preview=new Image(),name=document.createElement('figcaption');
+      link.href=src;link.target='_blank';link.rel='noopener';preview.src=src;preview.alt=img.alt;name.textContent=direction+'_'+pose+'.png';link.append(preview,name);thumb.append(link);frames.append(thumb);
+    }
+    groups.push(group);
+  }
+  paint();status();
+}
+select.onchange=choose;
+$('play').onclick=()=>{running=!running;$('play').textContent=running?'暫停':'播放';};
+$('next').onclick=()=>{running=false;$('play').textContent='播放';tick=(tick+1)%cycle.length;paint();};
+$('speed').oninput=()=>{$('speedValue').textContent=$('speed').value+' ms';startTimer();};
+$('guides').onchange=()=>animations.classList.toggle('guides',$('guides').checked);
+choose();startTimer();
+</script>
+</html>
+
