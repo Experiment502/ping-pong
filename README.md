@@ -101,19 +101,22 @@ python -m http.server 8000
 │   ├── world.js             # 冠軍之路的地圖：走路、建築、路人挑戰、對話
 │   ├── maps.js              # 台灣篇 20 張地圖的資料（由 tools/build_maps.py 產生）
 │   ├── chars.js             # 人物走路圖在 chars.png 裡的位置（由 tools/build_chars.py 產生）
+│   ├── battle.js            # 對戰對手在 battle.png 裡的位置和球拍位置（由 tools/build_chars.py 產生）
 │   └── maps_overseas.js     # 之後出國比賽用的 10 張地圖資料（還沒接進遊戲）
 ├── tools/
 │   ├── build_maps.py        # 產生 js/maps.js：每張地圖的障礙物、門、出口、人物，並自動檢查走不走得到
-│   ├── build_chars.py       # 把走路圖去背、對齊，產生 assets/chars.png 和 js/chars.js
+│   ├── build_chars.py       # 把 assets/char_frames 的原圖去背、對齊，產生走路圖集、對戰圖集和頭像
 │   └── upscale_maps.py      # 把地圖放大 3 倍並銳化，產生 assets/maps/hd/*.webp（遊戲讀這個）
 ├── assets/
-│   ├── battle.png           # 對戰模式的對手（tools/build_chars.py --battle 產生）
+│   ├── battle.png           # 對戰模式的對手，每個角色一套（由 tools/build_chars.py 產生）
 │   ├── sprites.png          # 舊的對戰角色圖（目前沒用到，留著參考揮拍動作）
 │   ├── referee.png          # 猜球用的裁判動畫圖
 │   ├── male_portrait.png    # 男選手立繪
 │   ├── female_portrait.png  # 女選手立繪
 │   ├── maps/                # 冠軍之路 20 張地圖的背景圖（v2_ 開頭的是社區和學校）（hd/ 裡是遊戲用的高畫質版本）
-│   ├── 15_character_sprite_sheets/  # 地圖上人物的走路圖原檔
+│   ├── char_frames/         # 22 個角色的原圖：每人走路 12 張、對戰 12 張（畫法見 docs/character_prompts.md）
+│   ├── portraits/           # 對手頭像（由 tools/build_chars.py 產生）
+│   ├── 15_character_sprite_sheets/  # 舊的走路圖原檔（目前沒用到）
 │   └── chars.png            # 整理好的人物走路圖（由 tools/build_chars.py 產生）
 └── docs/
     └── screenshot.png       # README 用的截圖

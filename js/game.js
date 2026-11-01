@@ -40,7 +40,7 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const other = s => (s === 'player' ? 'ai' : 'player');
 
 // ---------- 對手的圖（js/battle.js，由 tools/build_chars.py --battle 產生） ----------
-// SPR[男或女][動作] = 每一格 [x, y, w, h, 身體中心 x]；padOff(動作) = 球拍在身體中心左右幾像素（圖上像素）
+// SPR[角色][動作] = 每一格 [x, y, w, h, 身體中心 x]；padOff(動作) = 球拍在身體中心左右幾像素（圖上像素）
 const sheet = new Image();
 sheet.src = BATTLE.img;
 const SPR = BATTLE.spr;

@@ -376,18 +376,18 @@ for x in (6, 7):
 SPAWN = dict(map=15, x=5, y=3, dir='down')
 MAP_VERSION = 2   # 地圖大改時加一：舊存檔的位置會換回起點
 
-# 每個人在地圖上用哪一張走路圖（js/chars.js 裡的名字）
+# 每個人在地圖上和對戰時用哪個角色（assets/char_frames 的資料夾名稱，見 docs/character_prompts.md）
 SPRITES = {
-    '鄰居小孩 小志': 'boy', '晨跑的阿伯': 'grandpa', '鄰居阿姨': 'woman', '媽媽': 'woman', '韓宇的姊姊': 'student_f',
-    '上班族 王先生': 'man', '高中生 小婷': 'student_f', '外送員 阿峰': 'student_m',
-    '一年級學弟': 'boy', '跳繩女孩': 'girl', '警衛伯伯': 'grandpa',
-    '美術老師': 'woman_teacher', '三年級學長': 'tt_m', '糾察隊長': 'student_f', '訓導主任': 'director',
-    '班導 林老師': 'woman_teacher', '同學 小胖': 'student_m', '班長 小雯': 'student_f',
-    '桌球陳教練': 'man', '勁敵 韓宇': 'student_m', '桌球社學姊': 'tt_f',
-    '體育老師': 'man', '田徑隊 小飛': 'student_m', '足球隊 阿德': 'boy', '校長': 'principal',
-    '補習班學生': 'student_f', '騎腳踏車的大哥': 'man', '公園阿嬤': 'grandma',
-    '街頭藝人': 'man', '逛街的姊姊': 'woman', '市民': 'man', '恢復中心的姊姊': 'woman', '店長': 'man',
-    '報名櫃檯 小姐': 'woman',
+    '鄰居小孩 小志': 'kid_m', '晨跑的阿伯': 'grandpa', '鄰居阿姨': 'aunt', '媽媽': 'mom', '韓宇的姊姊': 'high_f',
+    '上班族 王先生': 'office_m', '高中生 小婷': 'high_f', '外送員 阿峰': 'high_m',
+    '一年級學弟': 'kid_m', '跳繩女孩': 'kid_f', '警衛伯伯': 'grandpa',
+    '美術老師': 'teacher_art', '三年級學長': 'senior_m', '糾察隊長': 'kid_f', '訓導主任': 'director',
+    '班導 林老師': 'teacher_lin', '同學 小胖': 'kid_m', '班長 小雯': 'kid_f',
+    '桌球陳教練': 'coach', '勁敵 韓宇': 'rival', '桌球社學姊': '15_female_referee',
+    '體育老師': 'teacher_pe', '田徑隊 小飛': 'kid_m', '足球隊 阿德': 'kid_m', '校長': 'principal',
+    '補習班學生': 'high_f', '騎腳踏車的大哥': 'high_m', '公園阿嬤': 'grandma',
+    '街頭藝人': 'high_m', '逛街的姊姊': 'office_w', '市民': 'office_m', '恢復中心的姊姊': 'office_w', '店長': 'office_m',
+    '報名櫃檯 小姐': 'office_w',
 }
 # 看到你就會衝過來挑戰的人（劇情關鍵角色）；其他路人要你自己點畫面找他們，才會問你要不要比賽
 SPOTTERS = {'rival1', 'boss_dir', 'boss_pri'}
@@ -396,7 +396,7 @@ for _m in M.values():
         _t['spot'] = _t['id'] in SPOTTERS
 for _m in M.values():
     for _p in _m.trainers + _m.npcs:
-        _p['sprite'] = SPRITES.get(_p['name'], 'woman' if _p['char'] == 'female' else 'man')
+        _p['sprite'] = SPRITES.get(_p['name'], 'office_w' if _p['char'] == 'female' else 'office_m')
 
 
 # ======================= 檢查 =======================
