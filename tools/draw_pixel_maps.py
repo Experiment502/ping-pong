@@ -53,6 +53,12 @@ def atlas(name):
 out,inside=atlas('outdoor'),atlas('indoor')
 SPRITES={name:out[i] for i,name in enumerate(['grass','sand','paving','water','tree','hedge','flowers','fence','red_house','blue_house','orange_house','school','fountain','sign','lamp','boulder'])}
 SPRITES.update({name:inside[i] for i,name in enumerate(['wood','school_floor','window','bed','desk','bookshelf','sofa','tv','dining','kitchen','plant','stairs','ttable','blackboard','counter','wardrobe'])})
+sofa=Image.open(os.path.join(ROOT,'assets/maps/tiles/sofa_north.png')).convert('RGBA')
+SPRITES['sofa_north']=sofa.crop(sofa.getchannel('A').point(lambda a:255 if a>160 else 0).getbbox())
+school=Image.open(os.path.join(ROOT,'assets/maps/tiles/japanese_school.png')).convert('RGBA')
+SPRITES['japanese_school']=school.crop(school.getchannel('A').point(lambda a:255 if a>160 else 0).getbbox())
+bench=Image.open(os.path.join(ROOT,'assets/maps/tiles/bench.png')).convert('RGBA')
+SPRITES['bench']=bench.crop(bench.getchannel('A').point(lambda a:255 if a>160 else 0).getbbox())
 T=32
 
 
@@ -91,15 +97,21 @@ def render(m):
         elif tile=='court':
             rect(x,y,ww,hh,'#97ac9a')
             d.rectangle((x*T+3,y*T+3,(x+ww)*T-4,(y+hh)*T-4),outline='#ecddba',width=2)
-        elif tile=='track':
+        elif tile=='schoolyard':
+            rect(x,y,ww,hh,'#d8cbb1')
+            for yy in range(y,y+hh):
+                for xx in range(x,x+ww):
+                    px,py=xx*T+(xx*7+yy*11)%28,yy*T+(xx*13+yy*5)%28
+                    d.rectangle((px,py,px+1,py),fill='#c8ba9f')
+                    d.point((px+3,py+3),fill='#e9dec5')
+        elif tile=='chalk_track':
             bounds=(x*T,y*T,(x+ww)*T-1,(y+hh)*T-1)
-            d.rounded_rectangle(bounds,radius=hh*T//2,fill='#c48b65')
-            for inset in (7,18,29):
-                d.rounded_rectangle((bounds[0]+inset,bounds[1]+inset,bounds[2]-inset,bounds[3]-inset),radius=max(1,hh*T//2-inset),outline='#ead6a5',width=2)
-            d.rounded_rectangle((bounds[0]+46,bounds[1]+46,bounds[2]-46,bounds[3]-46),radius=max(1,hh*T//2-46),fill='#83ba64')
-            # One center line and goals identify the clear grass playing field.
-            d.line(((x+ww/2)*T,(y+2)*T,(x+ww/2)*T,(y+hh-2)*T),fill='#cddd9d',width=2)
-            d.ellipse(((x+ww/2-1.5)*T,(y+hh/2-1.5)*T,(x+ww/2+1.5)*T,(y+hh/2+1.5)*T),outline='#cddd9d',width=2)
+            for inset in (6,15,24):
+                d.rounded_rectangle((bounds[0]+inset,bounds[1]+inset,bounds[2]-inset,bounds[3]-inset),radius=max(1,hh*T//2-inset),outline='#f5efdb',width=2)
+            # White chalk on the same dirt, rather than a separate turf field.
+            d.rectangle(((x+3)*T,(y+3)*T,(x+ww-3)*T,(y+hh-3)*T),outline='#f5efdb',width=2)
+            d.line(((x+ww/2)*T,(y+3)*T,(x+ww/2)*T,(y+hh-3)*T),fill='#f5efdb',width=2)
+            d.ellipse(((x+ww/2-1.25)*T,(y+hh/2-1.25)*T,(x+ww/2+1.25)*T,(y+hh/2+1.25)*T),outline='#f5efdb',width=2)
         elif tile=='flowers':
             for yy in range(y,y+hh):
                 for xx in range(x,x+ww): sprite('flowers',xx,yy)
@@ -109,14 +121,15 @@ def render(m):
                 d.rectangle((x*T,y*T,(x+ww)*T-1,(y+hh)*T-1),outline='#c9bb78')
 
     if m['inside']:
+        wall=m['art']['wall']
         # One continuous back wall, with two windows; furniture has its own positions.
-        rect(0,0,w,2,'#e2ddbf')
-        rect(0,1.65,w,.35,'#9c7f58')
-        rect(0,2,w,.08,'#635a4c')
+        rect(0,0,w,wall,'#e2ddbf')
+        rect(0,wall-.35,w,.35,'#9c7f58')
+        rect(0,wall,w,.08,'#635a4c')
         for xx in (3,w-6):
-            if not any(p['x']<xx+2 and p['x']+p['w']>xx and p['y']<2 for p in m['art']['props']):
+            if not any(p['x']<xx+2 and p['x']+p['w']>xx and p['y']<wall for p in m['art']['props']):
                 sprite('window',xx,.15,2,1.5)
-        rect(0,2,1,h-2,'#625e4d'); rect(w-1,2,1,h-2,'#625e4d')
+        rect(0,wall,1,h-wall,'#625e4d'); rect(w-1,wall,1,h-wall,'#625e4d')
         rect(0,h-1,w,1,'#625e4d')
     else:
         # Only the forest perimeter is filled automatically; lawns remain open space.
@@ -137,14 +150,43 @@ def render(m):
     for p in sorted(m['art']['props'],key=lambda p:p['y']+p['h']):
         name,x,y,ww,hh=[p[k] for k in ('art','x','y','w','h')]
         if name=='bench':
-            rect(x,y+.1,ww,.3,'#665841'); rect(x+.12,y+.18,ww-.24,.22,'#b9935f')
-            rect(x+.12,y+.55,ww-.24,.25,'#c4a06c'); rect(x+.18,y+.8,.2,.2,'#65553f'); rect(x+ww-.38,y+.8,.2,.2,'#65553f')
+            # The upright backrest extends above the one-tile collision footprint.
+            sprite(name,x,y-.5,ww,hh+.5)
         elif name=='pillar':
             rect(x,y+.2,ww,hh-.2,'#7f8a82'); rect(x+.12,y+.15,ww-.24,hh-.35,'#c2c8a7')
             rect(x-.08,y,ww+.16,.3,'#dde0bf')
         elif name=='door':
-            rect(x,y,ww,hh,'#7b654b'); rect(x+.1,y+.08,ww-.2,hh-.08,'#b79160')
-            rect(x+ww-.3,y+.6,.1,.1,'#e9d9a1')
+            # Front elevation: the frame ends exactly where the wall meets the floor.
+            rect(x,y,ww,hh,'#526267')
+            rect(x+.09,y+.08,ww-.18,hh-.14,'#b7bdb1')
+            for dx in (.16,ww/2+.04):
+                rect(x+dx,y+.16,ww/2-.2,hh*.54,'#8eb8c4','#627e88')
+                rect(x+dx+.06,y+.22,ww/2-.32,.1,'#cde4de')
+                rect(x+dx,y+hh*.68,ww/2-.2,hh*.23,'#d5cfb4','#929781')
+            rect(x+ww/2-.04,y+.08,.08,hh-.15,'#6b7b7c')
+            rect(x+ww/2-.16,y+hh*.58,.06,.22,'#4e6268')
+            rect(x+ww/2+.1,y+hh*.58,.06,.22,'#4e6268')
+            rect(x-.06,y+hh-.08,ww+.12,.08,'#d8d9be')
+        elif name in ('goal_left','goal_right'):
+            rect(x,y,ww,hh,'#c3c5b5')
+            for step in range(0,round(ww*T),8):
+                d.line((x*T+step,y*T,x*T+step,(y+hh)*T-1),fill='#e3e5d3')
+            for step in range(0,round(hh*T),8):
+                d.line((x*T,y*T+step,(x+ww)*T-1,y*T+step),fill='#e3e5d3')
+            post=x+ww-.1 if name=='goal_left' else x
+            rect(post,y,.1,hh,'#f9f8e9')
+            rect(x,y,ww,.1,'#f9f8e9'); rect(x,y+hh-.1,ww,.1,'#f9f8e9')
+        elif name=='bars':
+            for i in range(3):
+                xx=x+i*ww/3
+                height=.8+i*.25
+                rect(xx+.08,y+hh-height,.08,height,'#4e8d9a')
+                rect(xx+ww/3-.12,y+hh-height,.08,height,'#4e8d9a')
+                rect(xx+.08,y+hh-height,ww/3-.12,.08,'#9fc1b9')
+        elif name=='flagpole':
+            rect(x+.1,y+hh-.2,.8,.2,'#8d9d91')
+            rect(x+.46,y,.08,hh-.2,'#dce2d4')
+            d.polygon(((round((x+.54)*T),round((y+.15)*T)),(round((x+1.3)*T),round((y+.45)*T)),(round((x+.54)*T),round((y+.75)*T))),fill='#608b9d')
         elif name=='water':
             rect(x-.08,y-.08,ww+.16,hh+.16,'#c1bd81')
             terrain('water',x,y,ww,hh)
@@ -195,7 +237,7 @@ def with_people(im,m,player=None):
     return im.convert('RGB')
 
 
-order=[15,2,1,18,5,9,19,7,21,8,20,6,10,11,14,12,13,17,3,16]
+order=[15,2,1,18,5,9,7,21,8,20,6,10,11,14,12,13,17,3,16]
 sheet=Image.new('RGB',(1920,5*440+80),'#203d41')
 sd=ImageDraw.Draw(sheet)
 sd.text((24,18),'冠軍之路  /  社區・校園・市區',font=font(26),fill='#eee1b3')
@@ -210,10 +252,13 @@ for i,mid in enumerate(order):
     sheet.paste(image,(x+12+(456-image.width)//2,y+42))
 sheet.save(os.path.join(DEST,'overview.png'))
 # Four full-size representative scenes for art/layout review.
-for mid in (1,15,18,11):
+for mid in (1,2,3,7,9,15,18,20,11):
     m=maps[str(mid)]
     im=Image.open(os.path.join(DEST,f'{mid:02d}.png'))
     with_people(im,m,(5,5) if mid==15 else None).save(os.path.join(DEST,f'preview-{mid:02d}.png'))
 # Preserve the previous preview link while showing the latest layout.
 Image.open(os.path.join(DEST,'preview-01.png')).save(os.path.join(DEST,'character-preview.png'))
-print('PASS: 20 authored scenes rendered at 32px/tile; character previews and overview written.')
+# Show a bench in the park with a character beside it for scale.
+park=Image.open(os.path.join(DEST,'preview-18.png'))
+park.crop((15*T,6*T,20*T,12*T)).resize((480,576),N).save(os.path.join(DEST,'bench-preview.png'))
+print(f'PASS: {len(order)} authored scenes rendered at 32px/tile; character previews and overview written.')
