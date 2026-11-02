@@ -317,7 +317,7 @@ function stepBack(silent) {   // 從門口退一步（面向外面）
 
 // 所有球拍都壞了：被送到市區中心的商店
 function worldGoToShop(now) {
-  loadMap(13, 6, 4, 'up');
+  loadMap(13, 7, 10, 'up');
   worldSavePos(); writeSave();
   if (now) shopArrival(); else world.pendingShop = true;
 }
@@ -445,7 +445,7 @@ function drawWorld(dt) {
   ctx.setTransform(DPR * k, 0, 0, DPR * k, -camX * DPR * k, -camY * DPR * k);
   const img = mapImg(world.id);
   if (img.complete && img.naturalWidth) {
-    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(img, 0, 0, mw, mw * img.naturalHeight / img.naturalWidth);   // 圖片寬度剛好對齊地圖的格數
   }
   const ents = world.npcs.map(n => Object.assign({ n }, personPx(n))).concat([Object.assign({ me: true }, p)]);
