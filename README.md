@@ -65,7 +65,7 @@
 - 打敗三位老師 → 訓導主任 → 校長，就能代表學校去市區中心的**市立體育館**，跟裡面的報名櫃檯報名：校際賽 → 地區比賽 → 全國比賽 → 亞洲區比賽。
 - **球具**：球拍是底板＋膠皮，數據參考 JOOLA 官網的[底板](https://joola.tw/blade-specifications/)和[膠皮](https://joola.tw/rubber-specifications/)規格表（速度、旋轉、彈道、精準性、硬度、彈性度），膠皮種類參考[這篇介紹](https://tabletennistec.com/zh/3802/%E6%A1%8C%E7%90%83%E6%8B%8D%E8%86%A0%E7%9A%AE%E4%BB%8B%E7%B4%B9%E7%90%83%E7%9A%AE%E6%9C%89%E5%93%AA%E4%BA%9B%E7%A8%AE%E9%A1%9E/)（例如長顆粒膠會反轉對手的旋轉）。商店依等級開放（入門 → 性能 → 職業 → 頂級），「強化」可以把底板或膠皮升級成同系列的下一款。
 - **球拍耐久度**：每一分都會磨損，歸零就壞掉；全部壞掉這場直接算輸，還會被送去商店。**恢復中心**和陳教練可以免費修理，商店賣比賽中能用的修理道具。
-- 路線：自己家（二樓、一樓）→ 社區街道 → 社區公園 → 校門 → 操場 → 教學樓（一樓有辦公室和桌球體育館，二樓是教室）→ 市區道路 → 市區中心（市立體育館、恢復中心、商店）。社區街道上還有老奶奶家和勁敵家。之後的出國比賽會再加上國外的地圖。
+- 路線：自己家（二樓、一樓）→ 社區街道 → 社區公園 → 校門 → 校園（操場北側就是教學樓，一樓有辦公室和桌球體育館，二樓是教室）→ 市區道路 → 市區中心（市立體育館、恢復中心、商店）。操場與教學樓外觀在同一張地圖，可直接往北走到玄關。社區街道上還有老奶奶家和勁敵家。之後的出國比賽會再加上國外的地圖。
 
 ### 練習模式
 
@@ -94,7 +94,7 @@ python -m http.server 8000
 
 ### 像素地圖
 
-冠軍之路目前使用 `assets/maps/pixel/` 的 20 張俯視像素地圖，依照 `.scratch/story-v2/issues/01-story-test-harness.md` 的路線連接。地圖配置在 `tools/map_layouts.py`：道路、草地、建築、家具、人物和出入口皆逐張安排，碰撞與背景共用同一份配置。所有地圖採 32 像素地磚。地圖總覽可開啟 `test/pixel_maps.html`，或查看 `assets/maps/pixel/overview.png`。
+冠軍之路目前使用 `assets/maps/pixel/` 的 19 張俯視像素地圖，保留 `.scratch/story-v2/issues/01-story-test-harness.md` 的路線，並將操場與教學樓外觀合併為連續校園。地圖配置在 `tools/map_layouts.py`：道路、草地、建築、家具、人物和出入口皆逐張安排，碰撞與背景共用同一份配置。所有地圖採 32 像素地磚。地圖總覽可開啟 `test/pixel_maps.html`，或查看 `assets/maps/pixel/overview.png`。
 
 地圖版本更新後，舊存檔會從房間重新出發，球具、金錢與劇情進度保留。
 
@@ -107,7 +107,9 @@ python3 tools/draw_pixel_maps.py
 
 第一步會驗證出入口、人物和傳送目的地可達；第二步依相同碰撞格線，使用 `assets/maps/tiles/` 的原創室內外像素素材組裝背景。素材生成提示詞保存在該資料夾的 README。遊戲直接讀取 PNG，無需執行舊版放大工具。
 
-安裝 Node.js 的環境可執行 `node test/world_maps_smoke.mjs`，用遊戲本身的走路與換圖函式驗證故事路線、全部 58 個出入口，以及球拍損壞後前往商店的位置。這項測試不涵蓋比賽操作。
+安裝 Node.js 的環境可執行 `node test/world_maps_smoke.mjs`，用遊戲本身的走路與換圖函式驗證故事路線、全部出入口，以及球拍損壞後前往商店的位置。這項測試不涵蓋比賽操作。
+
+校園配置參考日本小學：長條平頂校舍、三層成排窗戶與中央玄關；操場採砂土面、白色跑道與球場標線，並設球門、單槓。走廊的玻璃拉門嵌在後牆，兩片門扇前的門檻都可通行。校舍素材與參考來源見 `assets/maps/tiles/japanese_school.md`。
 
 ```
 .
@@ -116,13 +118,13 @@ python3 tools/draw_pixel_maps.py
 │   ├── game.js              # 比賽本體（畫面、物理、對手 AI、計分、音效）
 │   ├── career.js            # 冠軍之路：存檔、球具與耐久度、賽事、商店
 │   ├── world.js             # 冠軍之路的地圖：走路、建築、路人挑戰、對話
-│   ├── maps.js              # 台灣篇 20 張地圖的資料（由 tools/build_maps.py 產生）
+│   ├── maps.js              # 台灣篇 19 張地圖的資料（由 tools/build_maps.py 產生）
 │   ├── chars.js             # 人物走路圖在 chars.png 裡的位置（由 tools/build_chars.py 產生）
 │   ├── battle.js            # 對戰對手在 battle.png 裡的位置和球拍位置（由 tools/build_chars.py 產生）
 │   └── maps_overseas.js     # 之後出國比賽用的 10 張地圖資料（還沒接進遊戲）
 ├── tools/
 │   ├── build_maps.py        # 產生 js/maps.js，檢查出入口、人物、傳送位置與整條路線
-│   ├── map_layouts.py       # 20 張地圖的手工配置：地形、道路、建築、家具、出入口
+│   ├── map_layouts.py       # 19 張地圖的手工配置：地形、道路、建築、家具、出入口
 │   ├── story_people.json    # 原有 NPC、挑戰者、對話及解鎖條件
 │   ├── draw_pixel_maps.py   # 依配置組裝已核可的素材，輸出遊戲地圖與人物預覽
 │   ├── build_chars.py       # 把 assets/char_frames 的原圖去背、對齊，產生走路圖集、對戰圖集和頭像
