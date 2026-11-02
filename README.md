@@ -92,6 +92,23 @@ python -m http.server 8000
 
 ## 檔案結構
 
+### 像素地圖
+
+冠軍之路目前使用 `assets/maps/pixel/` 的 20 張俯視像素地圖，依照 `.scratch/story-v2/issues/01-story-test-harness.md` 的路線連接。地圖配置在 `tools/map_layouts.py`：道路、草地、建築、家具、人物和出入口皆逐張安排，碰撞與背景共用同一份配置。所有地圖採 32 像素地磚。地圖總覽可開啟 `test/pixel_maps.html`，或查看 `assets/maps/pixel/overview.png`。
+
+地圖版本更新後，舊存檔會從房間重新出發，球具、金錢與劇情進度保留。
+
+重新製作地圖（Python 需安裝 Pillow）：
+
+```bash
+python3 tools/build_maps.py
+python3 tools/draw_pixel_maps.py
+```
+
+第一步會驗證出入口、人物和傳送目的地可達；第二步依相同碰撞格線，使用 `assets/maps/tiles/` 的原創室內外像素素材組裝背景。素材生成提示詞保存在該資料夾的 README。遊戲直接讀取 PNG，無需執行舊版放大工具。
+
+安裝 Node.js 的環境可執行 `node test/world_maps_smoke.mjs`，用遊戲本身的走路與換圖函式驗證故事路線、全部 58 個出入口，以及球拍損壞後前往商店的位置。這項測試不涵蓋比賽操作。
+
 ```
 .
 ├── index.html               # 畫面版面、樣式、遊戲說明
@@ -104,16 +121,19 @@ python -m http.server 8000
 │   ├── battle.js            # 對戰對手在 battle.png 裡的位置和球拍位置（由 tools/build_chars.py 產生）
 │   └── maps_overseas.js     # 之後出國比賽用的 10 張地圖資料（還沒接進遊戲）
 ├── tools/
-│   ├── build_maps.py        # 產生 js/maps.js：每張地圖的障礙物、門、出口、人物，並自動檢查走不走得到
+│   ├── build_maps.py        # 產生 js/maps.js，檢查出入口、人物、傳送位置與整條路線
+│   ├── map_layouts.py       # 20 張地圖的手工配置：地形、道路、建築、家具、出入口
+│   ├── story_people.json    # 原有 NPC、挑戰者、對話及解鎖條件
+│   ├── draw_pixel_maps.py   # 依配置組裝已核可的素材，輸出遊戲地圖與人物預覽
 │   ├── build_chars.py       # 把 assets/char_frames 的原圖去背、對齊，產生走路圖集、對戰圖集和頭像
-│   └── upscale_maps.py      # 把地圖放大 3 倍並銳化，產生 assets/maps/hd/*.webp（遊戲讀這個）
+│   └── upscale_maps.py      # 舊版地圖轉檔工具（目前不使用）
 ├── assets/
 │   ├── battle.png           # 對戰模式的對手，每個角色一套（由 tools/build_chars.py 產生）
 │   ├── sprites.png          # 舊的對戰角色圖（目前沒用到，留著參考揮拍動作）
 │   ├── referee.png          # 猜球用的裁判動畫圖
 │   ├── male_portrait.png    # 男選手立繪
 │   ├── female_portrait.png  # 女選手立繪
-│   ├── maps/                # 冠軍之路 20 張地圖的背景圖（v2_ 開頭的是社區和學校）（hd/ 裡是遊戲用的高畫質版本）
+│   ├── maps/                # pixel/ 是遊戲地圖；tiles/ 是素材原圖；其餘為舊版背景
 │   ├── char_frames/         # 22 個角色的原圖：每人走路 12 張、對戰 12 張（畫法見 docs/character_prompts.md）
 │   ├── portraits/           # 對手頭像（由 tools/build_chars.py 產生）
 │   ├── 15_character_sprite_sheets/  # 舊的走路圖原檔（目前沒用到）

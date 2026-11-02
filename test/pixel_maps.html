@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-Hant">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>冠軍之路・像素地圖總覽</title>
+<style>
+body{margin:0;background:#203d41;color:#eee4c5;font:16px system-ui;padding:24px}h1{font-size:24px}p{color:#b5cebe}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:24px}article{background:#2c4c50;padding:16px;border:2px solid #6f9384;border-radius:6px}h2{font-size:18px;margin:0 0 12px}canvas{width:100%;image-rendering:pixelated}a{color:#c3e5c3}
+</style>
+<h1>冠軍之路・像素地圖總覽</h1>
+<p>房間 → 客廳 → 社區街道 → 公園 → 校門 → 操場 → 教學樓 → 一樓走廊（辦公室／桌球體育館）→ 二樓教室 → 市區道路 → 市區中心</p>
+<p>住宅庭院 → 公園步道 → 校門廣場 → 操場 → 教學樓；室內家具與碰撞位置依同一份配置繪製。<a href="../index.html">進入遊戲</a></p>
+<main></main>
+<script src="../js/maps.js"></script>
+<script src="../js/chars.js"></script>
+<script>
+const load = src => new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=reject;im.src='../'+src;});
+(async()=>{
+ const chars=await load('assets/chars.png');
+ for(const id of [15,2,1,18,5,9,19,7,21,8,20,6,10,11,14,12,13,17,3,16]){
+  const m=WORLD_MAPS[id], art=document.createElement('article'), title=document.createElement('h2');
+  title.textContent=`${id} · ${m.name}`;art.append(title);document.querySelector('main').append(art);
+  const bg=await load(m.img), canvas=document.createElement('canvas');canvas.width=bg.width;canvas.height=bg.height;art.append(canvas);
+  const c=canvas.getContext('2d');c.imageSmoothingEnabled=false;c.drawImage(bg,0,0);
+  const people=[...m.trainers,...m.npcs];
+  if(id===15) people.push({x:WORLD_SPAWN.x,y:WORLD_SPAWN.y,sprite:'player_m',dir:'down'});
+  for(const p of people){
+   const sh=CHAR_SHEETS[p.sprite];if(!sh)continue;
+   const h=52,w=CHAR_CELL.w*h/CHAR_CELL.h,t=m.tp;
+   c.drawImage(chars,sh.x+CHAR_CELL.w,sh.y+sh.dirs[p.dir]*CHAR_CELL.h,CHAR_CELL.w,CHAR_CELL.h,(p.x+.5)*t-w/2,(p.y+1)*t-h,w,h);
+  }
+ }
+})().catch(e=>{document.querySelector('main').textContent='地圖載入失敗：'+e.message;});
+</script>
+</html>

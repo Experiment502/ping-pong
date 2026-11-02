@@ -1,0 +1,563 @@
+{
+  "1": {
+    "name": "社區街道",
+    "trainers": [
+      {
+        "id": "n1",
+        "dir": "down",
+        "name": "鄰居小孩 小志",
+        "char": "male",
+        "style": "allround",
+        "str": 0.04,
+        "range": 2,
+        "prize": 50,
+        "intro": "你有球拍了耶！跟我比一場！",
+        "after": "我回家叫我哥來找你！",
+        "req": "racket",
+        "spot": false,
+        "sprite": "kid_m"
+      }
+    ],
+    "npcs": [
+      {
+        "dir": "down",
+        "name": "晨跑的阿伯",
+        "char": "male",
+        "lines": [
+          "早安啊！阿伯每天早上都繞社區跑三圈。",
+          "打桌球跟跑步一樣，靠的是每天練習。"
+        ],
+        "role": "talk",
+        "sprite": "grandpa"
+      },
+      {
+        "dir": "down",
+        "name": "鄰居阿姨",
+        "char": "female",
+        "lines": [
+          "今天是你第一次上桌球課吧？",
+          "往右走過公園，就到學校了。"
+        ],
+        "role": "talk",
+        "sprite": "aunt"
+      }
+    ]
+  },
+  "15": {
+    "name": "我的房間",
+    "trainers": [],
+    "npcs": []
+  },
+  "2": {
+    "name": "我家客廳",
+    "trainers": [],
+    "npcs": [
+      {
+        "dir": "left",
+        "name": "媽媽",
+        "char": "female",
+        "lines": [
+          "今天是第一次上桌球課，別遲到了！",
+          "往右走過公園，就到學校了。",
+          "累了就回家休息，媽媽會幫你存檔。"
+        ],
+        "role": "mom",
+        "sprite": "mom"
+      }
+    ]
+  },
+  "3": {
+    "name": "韓家",
+    "trainers": [],
+    "npcs": [
+      {
+        "dir": "down",
+        "name": "韓宇的姊姊",
+        "char": "female",
+        "lines": [
+          "韓宇？他一大早就跑去學校的桌球體育館了。",
+          "他說今天一定要第一個拿到球拍。"
+        ],
+        "role": "talk",
+        "sprite": "high_f"
+      }
+    ]
+  },
+  "16": {
+    "name": "韓家二樓",
+    "trainers": [],
+    "npcs": []
+  },
+  "17": {
+    "name": "老奶奶家",
+    "trainers": [],
+    "npcs": []
+  },
+  "18": {
+    "name": "社區公園",
+    "trainers": [
+      {
+        "id": "r2",
+        "dir": "left",
+        "name": "高中生 小婷",
+        "char": "female",
+        "style": "spinner",
+        "str": 0.12,
+        "range": 2,
+        "prize": 100,
+        "intro": "我是高中桌球社的，讓你見識一下側旋！",
+        "after": "國小生也太強了吧…",
+        "req": "racket",
+        "spot": false,
+        "sprite": "high_f"
+      }
+    ],
+    "npcs": [
+      {
+        "dir": "right",
+        "name": "上班族 王先生",
+        "char": "male",
+        "lines": [
+          "上班要遲到了啦……",
+          "公園那張桌球桌，假日都要排隊才搶得到喔。"
+        ],
+        "role": "talk",
+        "sprite": "office_m"
+      },
+      {
+        "dir": "up",
+        "name": "外送員 阿峰",
+        "char": "male",
+        "lines": [
+          "我在等下一張訂單。",
+          "騎車送餐的時候常常看到有人在公園打球，看起來好好玩。"
+        ],
+        "role": "talk",
+        "sprite": "high_m"
+      }
+    ]
+  },
+  "5": {
+    "name": "光明國小 校門",
+    "trainers": [
+      {
+        "id": "e1",
+        "dir": "right",
+        "name": "一年級學弟",
+        "char": "male",
+        "style": "allround",
+        "str": 0.06,
+        "range": 4,
+        "prize": 60,
+        "intro": "學長！我也想打桌球！",
+        "after": "學長好厲害！",
+        "req": "racket",
+        "spot": false,
+        "sprite": "kid_m"
+      }
+    ],
+    "npcs": [
+      {
+        "dir": "left",
+        "name": "跳繩女孩",
+        "char": "female",
+        "lines": [
+          "我今天跳繩跳了一百下！",
+          "聽說桌球體育館的陳教練以前是國手耶。"
+        ],
+        "role": "talk",
+        "sprite": "kid_f"
+      },
+      {
+        "dir": "left",
+        "name": "警衛伯伯",
+        "char": "male",
+        "lines": [
+          "早安！進了大門先是操場，教學樓在操場後面。",
+          "一樓走廊走到底就是桌球體育館。"
+        ],
+        "role": "talk",
+        "sprite": "grandpa"
+      }
+    ]
+  },
+  "9": {
+    "name": "操場",
+    "trainers": [
+      {
+        "id": "pe",
+        "dir": "right",
+        "name": "體育老師",
+        "char": "male",
+        "style": "speedster",
+        "str": 0.22,
+        "range": 1,
+        "prize": 170,
+        "intro": "運動員的反應要快！準備好了嗎？",
+        "after": "好！你的腳步很靈活！",
+        "req": "racket",
+        "teacher": true,
+        "spot": false,
+        "sprite": "teacher_pe"
+      },
+      {
+        "id": "f1",
+        "dir": "down",
+        "name": "田徑隊 小飛",
+        "char": "male",
+        "style": "speedster",
+        "str": 0.15,
+        "range": 3,
+        "prize": 120,
+        "intro": "我跑得快，球也打得快！",
+        "after": "輸了…再去跑五圈。",
+        "req": "racket",
+        "spot": false,
+        "sprite": "kid_m"
+      }
+    ],
+    "npcs": [
+      {
+        "dir": "down",
+        "name": "足球隊 阿德",
+        "char": "male",
+        "lines": [
+          "足球隊今天休息，我在這裡看大家練跑。",
+          "頭上有桌球圖示的人，就是想找人比賽的喔。"
+        ],
+        "role": "talk",
+        "sprite": "kid_m"
+      }
+    ]
+  },
+  "19": {
+    "name": "教學樓",
+    "trainers": [],
+    "npcs": []
+  },
+  "7": {
+    "name": "一樓走廊",
+    "trainers": [
+      {
+        "id": "h1",
+        "dir": "down",
+        "name": "三年級學長",
+        "char": "male",
+        "style": "looper",
+        "str": 0.12,
+        "range": 1,
+        "prize": 100,
+        "intro": "學弟，你也是桌球社的嗎？來比比看！",
+        "after": "看來我得多練習了。",
+        "req": "racket",
+        "spot": false,
+        "sprite": "senior_m"
+      }
+    ],
+    "npcs": [
+      {
+        "dir": "down",
+        "name": "糾察隊長",
+        "char": "female",
+        "lines": [
+          "走廊上不可以奔跑喔！",
+          "辦公室在走廊左邊，訓導主任很嚴格，聽說他只跟打敗老師的學生比賽。"
+        ],
+        "role": "talk",
+        "sprite": "kid_f"
+      }
+    ]
+  },
+  "20": {
+    "name": "二樓走廊",
+    "trainers": [
+      {
+        "id": "h3",
+        "dir": "left",
+        "name": "美術老師",
+        "char": "female",
+        "style": "spinner",
+        "str": 0.22,
+        "range": 3,
+        "prize": 170,
+        "intro": "球的旋轉，就像畫畫的筆觸一樣！",
+        "after": "你的球很有藝術感。",
+        "req": "racket",
+        "teacher": true,
+        "spot": false,
+        "sprite": "teacher_art"
+      }
+    ],
+    "npcs": []
+  },
+  "6": {
+    "name": "三年二班",
+    "trainers": [
+      {
+        "id": "t_lin",
+        "dir": "right",
+        "name": "班導 林老師",
+        "char": "female",
+        "style": "allround",
+        "str": 0.2,
+        "range": 6,
+        "prize": 150,
+        "intro": "上課前，老師先考考你的球技！",
+        "after": "很好，你有認真練習。",
+        "req": "racket",
+        "teacher": true,
+        "spot": false,
+        "sprite": "teacher_lin"
+      },
+      {
+        "id": "cl1",
+        "dir": "down",
+        "name": "同學 小胖",
+        "char": "male",
+        "style": "lobber",
+        "str": 0.09,
+        "range": 3,
+        "prize": 80,
+        "intro": "下課了！來打一場！",
+        "after": "我餓了，先去福利社…",
+        "req": "racket",
+        "spot": false,
+        "sprite": "kid_m"
+      }
+    ],
+    "npcs": [
+      {
+        "dir": "up",
+        "name": "班長 小雯",
+        "char": "female",
+        "lines": [
+          "班長的工作好多……",
+          "聽說學校裡有三位老師也很會打桌球，班導林老師就是其中一位。"
+        ],
+        "role": "talk",
+        "sprite": "kid_f"
+      }
+    ]
+  },
+  "21": {
+    "name": "辦公室",
+    "trainers": [
+      {
+        "id": "boss_dir",
+        "dir": "right",
+        "name": "訓導主任",
+        "char": "male",
+        "style": "chopper",
+        "str": 0.3,
+        "range": 3,
+        "prize": 230,
+        "intro": "聽說你打敗了好幾位老師？讓我來試試你！",
+        "after": "很好！校長也很想跟你比一場。",
+        "req": "teachers3",
+        "blocked": "主任：先去跟三位老師比過，再來找我吧。",
+        "spot": true,
+        "sprite": "director"
+      },
+      {
+        "id": "boss_pri",
+        "dir": "down",
+        "name": "校長",
+        "char": "male",
+        "style": "allround",
+        "str": 0.38,
+        "range": 3,
+        "prize": 300,
+        "intro": "我年輕時可是校隊隊長喔。來吧，讓我看看你的實力！",
+        "after": "太精彩了！你就代表我們學校，去市區中心的體育館參加校際賽吧！",
+        "req": "director",
+        "blocked": "校長：同學好！聽說訓導主任很想跟你比一場喔。",
+        "spot": true,
+        "sprite": "principal"
+      }
+    ],
+    "npcs": []
+  },
+  "8": {
+    "name": "桌球體育館",
+    "trainers": [
+      {
+        "id": "rival1",
+        "dir": "up",
+        "name": "勁敵 韓宇",
+        "char": "male",
+        "style": "allround",
+        "str": 0.12,
+        "range": 6,
+        "prize": 100,
+        "intro": "我也剛拿到球拍！第一場比賽，就跟你打！",
+        "after": "哼，這次算你贏，我會變得更強的！",
+        "req": "racket",
+        "story": true,
+        "spot": true,
+        "sprite": "rival"
+      },
+      {
+        "id": "tt2",
+        "dir": "down",
+        "name": "桌球社學姊",
+        "char": "female",
+        "style": "looper",
+        "str": 0.16,
+        "range": 4,
+        "prize": 120,
+        "intro": "歡迎加入桌球社！學姊來陪你練習。",
+        "after": "進步得真快！",
+        "req": "racket",
+        "spot": false,
+        "sprite": "15_female_referee"
+      }
+    ],
+    "npcs": [
+      {
+        "dir": "right",
+        "name": "桌球陳教練",
+        "char": "male",
+        "lines": [],
+        "role": "coach",
+        "sprite": "coach"
+      }
+    ]
+  },
+  "10": {
+    "name": "市區道路（東側）",
+    "trainers": [
+      {
+        "id": "u1",
+        "dir": "up",
+        "name": "補習班學生",
+        "char": "female",
+        "style": "looper",
+        "str": 0.16,
+        "range": 2,
+        "prize": 120,
+        "intro": "補習前偷偷打一場！",
+        "after": "要被老師罵了啦！",
+        "req": "racket",
+        "spot": false,
+        "sprite": "high_f"
+      },
+      {
+        "id": "u3",
+        "dir": "left",
+        "name": "公園阿嬤",
+        "char": "female",
+        "style": "chopper",
+        "str": 0.2,
+        "range": 1,
+        "prize": 150,
+        "intro": "阿嬤的切球，可是練了五十年喔！",
+        "after": "乖孫，打得真好！",
+        "req": "racket",
+        "spot": false,
+        "sprite": "grandma"
+      }
+    ],
+    "npcs": [
+      {
+        "dir": "down",
+        "name": "騎腳踏車的大哥",
+        "char": "male",
+        "lines": [
+          "今天天氣真好，適合騎車。",
+          "一直往前騎就是市區中心，紅色屋頂的恢復中心可以免費修球拍喔。"
+        ],
+        "role": "talk",
+        "sprite": "high_m"
+      }
+    ]
+  },
+  "11": {
+    "name": "市區中心",
+    "trainers": [
+      {
+        "id": "u4",
+        "dir": "down",
+        "name": "街頭藝人",
+        "char": "male",
+        "style": "spinner",
+        "str": 0.2,
+        "range": 2,
+        "prize": 150,
+        "intro": "看我的魔術……不對，是側旋球！",
+        "after": "掌聲鼓勵！",
+        "req": "racket",
+        "spot": false,
+        "sprite": "high_m"
+      }
+    ],
+    "npcs": [
+      {
+        "dir": "down",
+        "name": "逛街的姊姊",
+        "char": "female",
+        "lines": [
+          "剛剛那家店的衣服好可愛！",
+          "球拍如果壞了，記得去左下角的商店看看。"
+        ],
+        "role": "talk",
+        "sprite": "office_w"
+      },
+      {
+        "dir": "up",
+        "name": "市民",
+        "char": "male",
+        "lines": [
+          "藍色屋頂的是市立體育館，在辦各種桌球比賽。",
+          "要先在學校打敗校長，代表學校出賽，才能報名喔。",
+          "紅色屋頂的是恢復中心，可以免費修球拍。左下的店是商店。"
+        ],
+        "role": "talk",
+        "sprite": "office_m"
+      }
+    ]
+  },
+  "12": {
+    "name": "恢復中心",
+    "trainers": [],
+    "npcs": [
+      {
+        "dir": "down",
+        "name": "恢復中心的姊姊",
+        "char": "female",
+        "lines": [],
+        "role": "nurse",
+        "across": true,
+        "sprite": "office_w"
+      }
+    ]
+  },
+  "13": {
+    "name": "商店",
+    "trainers": [],
+    "npcs": [
+      {
+        "dir": "down",
+        "name": "店長",
+        "char": "male",
+        "lines": [],
+        "role": "clerk",
+        "across": true,
+        "sprite": "office_m"
+      }
+    ]
+  },
+  "14": {
+    "name": "市立體育館",
+    "trainers": [],
+    "npcs": [
+      {
+        "dir": "down",
+        "name": "報名櫃檯 小姐",
+        "char": "female",
+        "lines": [],
+        "role": "arena",
+        "sprite": "office_w"
+      }
+    ]
+  }
+}
