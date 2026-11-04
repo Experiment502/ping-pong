@@ -7,6 +7,7 @@ import os
 import re
 from collections import deque
 from PIL import Image, ImageDraw, ImageFont
+from map_layouts import REGIONS, lake_mask
 
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEST=os.path.join(ROOT,'assets/maps/pixel')
@@ -20,17 +21,21 @@ def font(size):
     return ImageFont.truetype(FONT,size) if os.path.exists(FONT) else ImageFont.load_default()
 
 
-def atlas(name):
+def atlas(name,grid=4):
     im=Image.open(os.path.join(ROOT,'assets/maps/tiles',name+'.png')).convert('RGBA')
     cells=[]
-    for y in range(4):
-        for x in range(4):
-            cell=im.crop((round(x*im.width/4),round(y*im.height/4),round((x+1)*im.width/4),round((y+1)*im.height/4)))
+    for y in range(grid):
+        for x in range(grid):
+            bounds=(round(x*im.width/grid),round(y*im.height/grid),round((x+1)*im.width/grid),round((y+1)*im.height/grid))
+            if name=='school_interior' and x==0 and y==0:
+                # The tall door extends into the transparent gutter above the shoe rack.
+                bounds=(0,0,im.width//2,round(im.height*.57))
+            cell=im.crop(bounds)
             # The atlas has faint detached pixels: crop single objects to their main cluster.
             alpha=cell.getchannel('A').point(lambda a:255 if a>160 else 0)
             bounds=alpha.getbbox()
-            index=y*4+x
-            if (name=='outdoor' and index not in (0,1,2,3,6)) or (name=='indoor' and index not in (0,1)):
+            index=y*grid+x
+            if (name=='outdoor' and index not in (0,1,2,3,6)) or (name=='indoor' and index not in (0,1)) or name in ('school_interior','longtan_landmarks'):
                 pixels=alpha.tobytes(); seen=bytearray(len(pixels)); largest=[]
                 for seed,value in enumerate(pixels):
                     if not value or seen[seed]: continue
@@ -59,6 +64,10 @@ school=Image.open(os.path.join(ROOT,'assets/maps/tiles/japanese_school.png')).co
 SPRITES['japanese_school']=school.crop(school.getchannel('A').point(lambda a:255 if a>160 else 0).getbbox())
 bench=Image.open(os.path.join(ROOT,'assets/maps/tiles/bench.png')).convert('RGBA')
 SPRITES['bench']=bench.crop(bench.getchannel('A').point(lambda a:255 if a>160 else 0).getbbox())
+school_furniture=atlas('school_interior',2)
+SPRITES.update(dict(zip(('school_door','noticeboard','shoe_lockers','school_window'),school_furniture)))
+landmarks=atlas('longtan_landmarks',2)
+SPRITES.update(dict(zip(('longyuan_temple','island_shrine','streetfront','market_stall'),landmarks)))
 T=32
 
 
@@ -97,6 +106,11 @@ def render(m):
         elif tile=='court':
             rect(x,y,ww,hh,'#97ac9a')
             d.rectangle((x*T+3,y*T+3,(x+ww)*T-4,(y+hh)*T-4),outline='#ecddba',width=2)
+        elif tile=='bridge':
+            rect(x,y,ww,hh,'#b48c5e')
+            for px in range(x*T,(x+ww)*T,6):
+                d.line((px,y*T,px,(y+hh)*T-1),fill='#866b4d')
+            rect(x,y,ww,.12,'#e3c28d'); rect(x,y+hh-.12,ww,.12,'#e3c28d')
         elif tile=='schoolyard':
             rect(x,y,ww,hh,'#d8cbb1')
             for yy in range(y,y+hh):
@@ -122,15 +136,27 @@ def render(m):
 
     if m['inside']:
         wall=m['art']['wall']
-        # One continuous back wall, with two windows; furniture has its own positions.
+        # Windows sit directly in continuous plaster, without their atlas wall/wood panel.
         rect(0,0,w,wall,'#e2ddbf')
-        rect(0,wall-.35,w,.35,'#9c7f58')
-        rect(0,wall,w,.08,'#635a4c')
+        rect(0,wall-.08,w,.08,'#b5b6a0')
+        rect(0,wall,w,.04,'#959f93')
         for xx in (3,w-6):
             if not any(p['x']<xx+2 and p['x']+p['w']>xx and p['y']<wall for p in m['art']['props']):
-                sprite('window',xx,.15,2,1.5)
-        rect(0,wall,1,h-wall,'#625e4d'); rect(w-1,wall,1,h-wall,'#625e4d')
-        rect(0,h-1,w,1,'#625e4d')
+                if m['art'].get('style')=='school':
+                    sprite('school_window',xx,.35,2,.95)
+                    continue
+                rect(xx,.35,2,.95,'#6c8080')
+                rect(xx+.07,.42,1.86,.81,'#cad5c4')
+                for dx in (.14,1.04):
+                    rect(xx+dx,.49,.82,.67,'#8eb8c4')
+                    rect(xx+dx+.05,.54,.6,.08,'#cde4de')
+                    rect(xx+dx+.05,.62,.09,.3,'#b3d1d2')
+                rect(xx+.96,.42,.08,.81,'#788b86')
+                rect(xx-.04,1.3,2.08,.08,'#b5b6a0')
+        rect(0,wall,1,h-wall,'#cbc8ae'); rect(w-1,wall,1,h-wall,'#cbc8ae')
+        rect(.94,wall,.06,h-wall,'#a5ad9e'); rect(w-1,wall,.06,h-wall,'#a5ad9e')
+        rect(0,h-1,w,1,'#cbc8ae')
+        rect(0,h-1,w,.06,'#a5ad9e')
     else:
         # Only the forest perimeter is filled automatically; lawns remain open space.
         used=set()
@@ -150,8 +176,8 @@ def render(m):
     for p in sorted(m['art']['props'],key=lambda p:p['y']+p['h']):
         name,x,y,ww,hh=[p[k] for k in ('art','x','y','w','h')]
         if name=='bench':
-            # The upright backrest extends above the one-tile collision footprint.
-            sprite(name,x,y-.5,ww,hh+.5)
+            # Two tiles wide and under a tile tall: seats two people, backrest about waist height.
+            sprite(name,x,y,ww,hh)
         elif name=='pillar':
             rect(x,y+.2,ww,hh-.2,'#7f8a82'); rect(x+.12,y+.15,ww-.24,hh-.35,'#c2c8a7')
             rect(x-.08,y,ww+.16,.3,'#dde0bf')
@@ -187,14 +213,25 @@ def render(m):
             rect(x+.1,y+hh-.2,.8,.2,'#8d9d91')
             rect(x+.46,y,.08,hh-.2,'#dce2d4')
             d.polygon(((round((x+.54)*T),round((y+.15)*T)),(round((x+1.3)*T),round((y+.45)*T)),(round((x+.54)*T),round((y+.75)*T))),fill='#608b9d')
+        elif name=='lake':
+            a=SPRITES['water']; tw,th=a.size
+            tile=a.crop((tw//4,th//4,tw*3//4,th*3//4)).resize((T,T),N)
+            water=Image.new('RGBA',(ww*T,hh*T))
+            for yy in range(hh):
+                for xx in range(ww): water.alpha_composite(tile,(xx*T,yy*T))
+            water.putalpha(lake_mask(p,T))
+            im.alpha_composite(water,(x*T,y*T))
         elif name=='water':
             rect(x-.08,y-.08,ww+.16,hh+.16,'#c1bd81')
             terrain('water',x,y,ww,hh)
             d.rectangle((x*T+2,y*T+2,(x+ww)*T-3,(y+hh)*T-3),outline='#9dd7ba',width=3)
-        elif name in ('fence','flowers','counter'):
+        elif name in ('fence','flowers','counter','hedge'):
             step=2 if name!='flowers' else 1
             for xx in range(x,x+ww,step):
                 sprite(name,xx,y,min(step,x+ww-xx),hh,stretch=name=='counter')
+        elif p.get('kind')=='building':
+            # Lots are one tile wider than the art, so the centered doorway sits on a whole tile.
+            sprite(name,x+.5,y,ww-1,hh)
         else:
             sprite(name,x,y,ww,hh)
         if p.get('label'):
@@ -214,7 +251,7 @@ def render(m):
             rect(x,y,1,1,'#ae6e60')
             d.line((x*T+2,y*T+4,(x+1)*T-3,y*T+4),fill='#d6bd90',width=2)
         elif not m['inside'] and target['inside']:
-            rect(x,y,1,.18,'#a79e7b')
+            rect(x,y+1,1,.18,'#a79e7b')   # doorstep below the door tile
     return im.convert('RGB')
 
 
@@ -237,10 +274,10 @@ def with_people(im,m,player=None):
     return im.convert('RGB')
 
 
-order=[15,2,1,18,5,9,7,21,8,20,6,10,11,14,12,13,17,3,16]
+order=[15,2,1,5,9,7,21,8,20,6,18,10,11,14,12,13,17,3,16]
 sheet=Image.new('RGB',(1920,5*440+80),'#203d41')
 sd=ImageDraw.Draw(sheet)
-sd.text((24,18),'冠軍之路  /  社區・校園・市區',font=font(26),fill='#eee1b3')
+sd.text((24,18),'冠軍之路  /  雙龍國小 / 龍潭池 / 龍元宮',font=font(26),fill='#eee1b3')
 for i,mid in enumerate(order):
     m=maps[str(mid)]; im=render(m)
     assert im.size==(m['w']*T,m['h']*T)
@@ -252,7 +289,7 @@ for i,mid in enumerate(order):
     sheet.paste(image,(x+12+(456-image.width)//2,y+42))
 sheet.save(os.path.join(DEST,'overview.png'))
 # Four full-size representative scenes for art/layout review.
-for mid in (1,2,3,7,9,15,18,20,11):
+for mid in (1,2,3,7,9,10,15,18,20,11):
     m=maps[str(mid)]
     im=Image.open(os.path.join(DEST,f'{mid:02d}.png'))
     with_people(im,m,(5,5) if mid==15 else None).save(os.path.join(DEST,f'preview-{mid:02d}.png'))
@@ -260,5 +297,26 @@ for mid in (1,2,3,7,9,15,18,20,11):
 Image.open(os.path.join(DEST,'preview-01.png')).save(os.path.join(DEST,'character-preview.png'))
 # Show a bench in the park with a character beside it for scale.
 park=Image.open(os.path.join(DEST,'preview-18.png'))
-park.crop((15*T,6*T,20*T,12*T)).resize((480,576),N).save(os.path.join(DEST,'bench-preview.png'))
+park.crop((20*T,7*T,28*T,15*T)).resize((480,480),N).save(os.path.join(DEST,'bench-preview.png'))
+
+# The map montage keeps the supplied reference's north/south/east/west relationships.
+world=Image.new('RGB',(1500,1320),'#203d41')
+wd=ImageDraw.Draw(world)
+wd.text((28,18),'龍潭  冠軍之路',font=font(28),fill='#eee1b3')
+wd.text((28,57),'北 ↑  /  依參考地圖的相對方位改編',font=font(16),fill='#b5cebe')
+centers={mid:(250+x*490,265+y*400) for mid,(x,y) in REGIONS.items()}
+for a,b in ((11,10),(18,10),(10,5),(5,1)):
+    wd.line((centers[a],centers[b]),fill='#cfba85',width=16)
+    wd.line((centers[a],centers[b]),fill='#f1e1ae',width=4)
+for mid,(gx,gy) in REGIONS.items():
+    px,py=20+gx*490,100+gy*400
+    wd.rounded_rectangle((px,py,px+460,py+350),radius=8,fill='#2a4d50',outline='#8eaa8b',width=2)
+    label={1:'主角家：大同路58巷3號',5:'雙龍國小（校門／校園）',18:'龍潭池公園',10:'神龍路／中豐路',11:'龍元宮商圈'}[mid]
+    wd.text((px+14,py+12),label,font=font(20),fill='#eee1b3')
+    preview_id=9 if mid==5 else mid
+    image=Image.open(os.path.join(DEST,f'preview-{preview_id:02d}.png'))
+    image.thumbnail((432,290),N)
+    world.paste(image,(px+14+(432-image.width)//2,py+48))
+wd.text((28,1270),'東南：主角家  →  西：雙龍國小  →  西北：龍潭池  /  北：龍元宮',font=font(19),fill='#eee1b3')
+world.save(os.path.join(DEST,'longtan-world.png'))
 print(f'PASS: {len(order)} authored scenes rendered at 32px/tile; character previews and overview written.')

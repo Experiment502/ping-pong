@@ -22,6 +22,11 @@ const field=campus.art.surfaces.find(s=>s.tile==='schoolyard');
 assert(school && field && school.y+school.h<=field.y, 'School must stand north of the field on the same map');
 assert(campus.trainers.some(p=>p.id==='pe'), 'PE teacher must remain on campus');
 assert(campus.warps.some(w=>w.to===7), 'Campus must lead directly into the first-floor corridor');
+assert(maps[1].objects.some(o=>o.name?.includes('大同路58巷3號')), 'Home must use the requested address');
+assert(maps[11].objects.some(o=>o.name==='龍元宮'), 'Temple must be the city landmark');
+for (const [from,to,dir] of [[1,5,'left'],[5,10,'up'],[10,18,'left'],[10,11,'up']]) {
+  assert(maps[from].warps.some(w=>w.to===to && w.dir===dir), `Incorrect Longtan geography: ${from} to ${to}`);
+}
 const directions = [['left',-1,0],['right',1,0],['up',0,-1],['down',0,1]];
 function routeTo(warp) {
   const start = `${world.x},${world.y}`;
@@ -56,10 +61,21 @@ function walk(warp, path) {
   transitions++;
 }
 api.loadMap(api.spawn.map, api.spawn.x, api.spawn.y, api.spawn.dir);
-for (const target of [2,1,18,5,9,7,8,7,21,7,20,6,20,7,9,5,10,11,12,11,13,11,14]) {
+for (const target of [2,1,5,10,18,10,5,9,7,8,7,21,7,20,6,20,7,9,5,10,11,12,11,13,11,14]) {
   const candidates = world.m.warps.filter(w=>w.to===target).map(w=>[w,routeTo(w)]).filter(([,p])=>p?.length);
   assert(candidates.length, `Cannot reach map ${target} from ${world.id}`);
   walk(...candidates[0]);
+}
+// Water blocks walking, while the east-bank bridge reaches the lake island continuously.
+api.loadMap(18,14,3,'down');
+api.tryStep('down');
+assert(!world.moving, 'Player can walk into the lake');
+api.loadMap(18,25,21,'left');
+const islandPath=routeTo({x:15,y:21});
+assert(islandPath?.length, 'Island is not accessible by bridge');
+for (const dir of islandPath) {
+  api.tryStep(dir); assert(world.moving, 'Bridge path blocked'); api.arrive(); steps++;
+  assert.equal(world.id,18); assert(!world.fade, 'Bridge unexpectedly changes maps');
 }
 // Exercise every individual portal, including optional homes and both stairs.
 for (const [id,m] of Object.entries(maps)) {

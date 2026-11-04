@@ -119,7 +119,7 @@ const STYLES = {
   speedster: { name: '快攻手', tip: '球速很快，手指要提早準備。', p: { lob: 0.02, short: 0.06, loop: 0.12, chop: 0.03, side: 0.04 }, speed: 0.82 },
 };
 
-// ---------- 賽事（在市區中心的市立體育館報名）：每一級的關鍵賽奪冠，就解鎖下一級 ----------
+// ---------- 賽事（在龍元宮商圈的市立體育館報名）：每一級的關鍵賽奪冠，就解鎖下一級 ----------
 const op = (name, char, style, str) => ({ name, char, style, str });
 const EVENT_TIERS = [
   { name: '校際賽', events: [
@@ -277,7 +277,7 @@ const itemsText = () => Object.entries(ITEMS).map(([id, it]) => `${it.name} ×${
 const VIEWS = {
   intro() {   // 角色在主選單已經選好了
     return `<h1>🏆 冠軍之路</h1>
-      <p class="lead">你是光明國小的學生。今天，是你第一次上桌球課的日子……<br>從學校開始，一路打到地區、全國、亞洲，成為真正的球王！</p>
+      <p class="lead">你是雙龍國小的學生。今天，是你第一次上桌球課的日子……<br>從學校開始，一路打到地區、全國、亞洲，成為真正的球王！</p>
       <div class="cards chars2"><div class="card pick"><img src="${portrait(S.char)}" alt=""><h3>${S.char === 'male' ? '男生' : '女生'}</h3></div></div>
       <div class="cbtns"><button class="main" data-act="begin">開始故事</button>
       <button data-act="exit">返回</button></div>`;
@@ -306,7 +306,7 @@ const VIEWS = {
       ${ui.msg ? `<div class="note">${ui.msg}</div>` : ''}
       ${r ? `<div class="card wide"><h3>🏓 使用中：${racketName(r)}</h3>${racketBars(r)}${durBar(r)}
         <div class="sub">共有 ${save.rackets.length} 支球拍．${itemsText()}</div></div>`
-        : `<div class="note">你還沒有球拍。${save.story.racket ? '去市區中心的商店買一支吧！' : '去學校一樓走廊盡頭的桌球體育館找陳教練吧！'}</div>`}
+        : `<div class="note">你還沒有球拍。${save.story.racket ? '去龍元宮商圈的商店買一支吧！' : '去學校一樓走廊盡頭的桌球體育館找陳教練吧！'}</div>`}
       ${save.run ? `<div class="note">你在「${curEvent().name}」打到${roundName(curEvent(), save.run.round)}了，回市立體育館繼續比賽吧！</div>` : ''}
       <div class="cbtns"><button class="main" data-act="world">▶ 回到地圖</button>
         ${r ? '<button data-act="gear">🎒 我的球具</button>' : ''}<button data-act="practice">🎯 練習模式</button><button data-act="saveNow">💾 存檔</button></div>
@@ -364,7 +364,7 @@ const VIEWS = {
   result() {
     const r = ui.result;
     const score = r.forfeit ? '' : `<div class="bigscore">${r.score}</div>`;
-    const broken = r.broken ? '<div class="note">💥 你的球拍全部壞掉了，只好先去市區中心的商店……</div>' : '';
+    const broken = r.broken ? '<div class="note">💥 你的球拍全部壞掉了，只好先去龍元宮商圈的商店……</div>' : '';
     if (r.kind === 'advance') {
       const ev = curEvent(), o = ev.ops[save.run.round];
       return `<h1>🎉 勝利！</h1>${score}<p class="lead">晉級${roundName(ev, save.run.round)}，下一位對手：${o.name}（${STYLES[o.style].name}）</p>
@@ -624,7 +624,7 @@ function trainerMatchEnd(won, forfeit, broken) {
     lines.push(`${t.name}：「${t.after}」`, `你贏了！獲得 ${money(t.prize)} 獎金。`);
     if (t.id === 'boss_pri') {
       save.story.principal = true;
-      lines.push('🔓 校際賽開放報名了！去市區中心的「市立體育館」報名吧！');
+      lines.push('🔓 校際賽開放報名了！去龍元宮商圈的「市立體育館」報名吧！');
     }
   } else {
     const pay = Math.min(save.money, t.prize);
@@ -633,7 +633,7 @@ function trainerMatchEnd(won, forfeit, broken) {
   }
   writeSave();
   worldResume();
-  if (broken) worldSay(lines.concat(['你的球拍全部壞掉了！只好先去市區中心的商店……']), () => worldGoToShop(true));
+  if (broken) worldSay(lines.concat(['你的球拍全部壞掉了！只好先去龍元宮商圈的商店……']), () => worldGoToShop(true));
   else worldSay(lines, () => worldCheckSight());
 }
 
