@@ -83,10 +83,10 @@ function worldEnter(isNew) {
   show('pause', false); show('menuOv', false); careerHide(); worldShowUI();
   if (isNew) {
     worldSay(['媽媽：「早安！今天是你第一次上桌球課的日子喔！」',
-      '媽媽：「出門往右走，經過公園就是學校。桌球體育館在教學樓一樓走廊的盡頭。」',
+      '媽媽：「沿大同路往西走就是雙龍國小。桌球體育館在教學樓一樓走廊的盡頭。」',
       '（手指按住畫面拖動就能走路，點一下畫面可以跟人說話、調查東西，右上的 ☰ 是選單）']);
   } else if (!hasRacket() && save.story.racket) {
-    worldSay(['你沒有球拍了，去市區中心的商店買一支吧。']);
+    worldSay(['你沒有球拍了，去龍元宮商圈的商店買一支吧。']);
   }
 }
 function worldResume() {
@@ -259,7 +259,7 @@ function talk(n) {
   const d = n.d;
   if (n.type === 'trainer') {
     if (save.beaten[d.id]) return worldSay([`${d.name}：「${d.after}」`]);
-    if (!hasRacket()) return worldSay([`${d.name}：「你沒有球拍耶，${save.story.racket ? '先去市區中心的商店買一支吧！' : '先去學校的桌球體育館上課吧！'}」`]);
+    if (!hasRacket()) return worldSay([`${d.name}：「你沒有球拍耶，${save.story.racket ? '先去龍元宮商圈的商店買一支吧！' : '先去學校的桌球體育館上課吧！'}」`]);
     if (!reqMet(d)) return worldSay([d.blocked || `${d.name}：「……」`]);
     if (d.spot) return worldSay([`${d.name}：「${d.intro}」`], () => startTrainerBattle(n));
     // 一般路人：先問你要不要比賽，可以拒絕
@@ -289,7 +289,7 @@ function coachTalk() {
     return worldSay(['陳教練：「你就是新來的同學吧？歡迎來到桌球體育館！」', '陳教練：「上課的第一件事，就是挑一支自己的球拍。」'],
       () => { world.paused = true; worldHideUI(); ui.pickStarter = null; careerShow('starter'); });
   }
-  if (!hasRacket()) return worldSay(['陳教練：「你的球拍呢？壞掉了？去市區中心的商店買一支吧。」']);
+  if (!hasRacket()) return worldSay(['陳教練：「你的球拍呢？壞掉了？去龍元宮商圈的商店買一支吧。」']);
   repairAll(); wsfx.heal();
   worldSay(['陳教練：「球拍拿來，我幫你保養一下。」', '……所有球拍的耐久度都恢復了！']);
 }
@@ -315,7 +315,7 @@ function stepBack(silent) {   // 從門口退一步（面向外面）
   if (!silent) worldCheckSight();
 }
 
-// 所有球拍都壞了：被送到市區中心的商店
+// 所有球拍都壞了：被送到龍元宮商圈的商店
 function worldGoToShop(now) {
   loadMap(13, 7, 10, 'up');
   worldSavePos(); writeSave();
