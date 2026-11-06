@@ -4,16 +4,16 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 const root = new URL('../', import.meta.url);
-const element = {addEventListener() {}, style: {}};
+const element = {addEventListener() {}, style: {}, classList: {add() {}, remove() {}}};
 const sandbox = vm.createContext({
   Image: class {}, $: () => element, cv: element, window: element,
   playSfx: () => () => {}, writeSave() {}, hasRacket: () => false,
-  save: {story: {racket: false}, beaten: {}}, console,
+  save: {story: {mom: true, racket: false}, beaten: {}}, console,
 });
 for (const name of ['js/maps.js', 'js/world.js']) {
   vm.runInContext(fs.readFileSync(new URL(name, root), 'utf8'), sandbox, {filename: name});
 }
-const api = vm.runInContext('({world, maps: WORLD_MAPS, spawn: WORLD_SPAWN, loadMap, tryStep, arrive, updateFade, worldGoToShop})', sandbox);
+const api = vm.runInContext('({world, maps: WORLD_MAPS, spawn: WORLD_SPAWN, loadMap, tryStep, arrive, updateFade, worldGoToShop, save})', sandbox);
 const {world, maps} = api;
 assert(!maps[19], 'School exterior must be merged into the field map');
 const campus=maps[9];
@@ -60,6 +60,13 @@ function walk(warp, path) {
   assert(!world.m.solid[world.y][world.x], 'Arrival is solid');
   transitions++;
 }
+// Leaving home before talking to Mom: she calls you back and you stay in the living room.
+api.save.story.mom = false;
+api.loadMap(2, 6, 10, 'down');
+api.tryStep('down'); api.arrive();
+assert(!world.fade && world.id === 2 && world.x === 6 && world.y === 10, 'Mom must stop you at the front door');
+assert(world.dialog?.lines[0].includes('等一下'), 'Mom must call you back');
+world.dialog = null; api.save.story.mom = true;
 api.loadMap(api.spawn.map, api.spawn.x, api.spawn.y, api.spawn.dir);
 for (const target of [2,1,5,10,18,10,5,9,7,8,7,21,7,20,6,20,7,9,5,10,11,12,11,13,11,14]) {
   const candidates = world.m.warps.filter(w=>w.to===target).map(w=>[w,routeTo(w)]).filter(([,p])=>p?.length);

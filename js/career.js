@@ -168,7 +168,7 @@ let save = null;
 function newSave(char) {
   return { v: 3, char, money: 200, rackets: [], racket: 0, rubbers: [], items: { tape: 0, kit: 0 },
     unlocked: 0, cleared: {}, wins: 0, losses: 0, titles: 0, earned: 0, run: null, champion: false,
-    story: { racket: false, principal: false }, beaten: {}, pos: Object.assign({}, WORLD_SPAWN), mapv: WORLD_MAP_VERSION };
+    story: { mom: false, racket: false, principal: false }, skills: {}, beaten: {}, pos: Object.assign({}, WORLD_SPAWN), mapv: WORLD_MAP_VERSION };
 }
 function loadSave() {
   let s = null;
@@ -190,9 +190,48 @@ function loadSave() {
     s.racket = Math.min(s.racket, Math.max(0, s.rackets.length - 1));
     s.v = 3;
   }
+  if (s) {
+    if (s.story.mom === undefined) s.story.mom = true;   // 舊存檔已經出過門了
+    s.skills = s.skills || {};                          // 舊存檔的旋轉也要找陳教練重新學
+  }
   return s;
 }
 function writeSave() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* 無痕模式等存不了就算了 */ } }
+
+// ---------- 球種：一開始只會平擊，進度到了陳教練會教新的旋轉 ----------
+const LESSONS = [
+  { key: 'chop', name: '下旋切球', ready: () => teacherWins() >= 3,
+    lines: ['陳教練：「聽說你把三位老師都打敗了！訓導主任最會切下旋，今天就教你下旋切球。」', '陳教練：「手指由上往下切過球，球就會帶著下旋，飛得慢、彈得低。」'] },
+  { key: 'loop', name: '上旋拉球', ready: () => save.story.principal,
+    lines: ['陳教練：「你連校長都贏了！要代表學校出賽，得學會更有攻擊性的球。」', '陳教練：「手指由下往上刷過球，就是上旋拉球，又快又會往下壓。」'] },
+  { key: 'side', name: '側旋', ready: () => save.unlocked >= 1,
+    lines: ['陳教練：「校際盃冠軍！外面的對手更強了，教你最後一招：側旋。」', '陳教練：「手指橫著用力刷過球，球會往旁邊彎，對手很難抓準落點。」'] },
+];
+const careerKnows = k => !!(save && save.skills[k]);
+const lessonDue = () => LESSONS.find(l => !save.skills[l.key] && l.ready());
+// 有新的球種可以學了：提醒一次就好
+function lessonNotice(lines) {
+  const l = lessonDue();
+  if (!l || save.story.told === l.key) return;
+  save.story.told = l.key;
+  lines.push(`📣 陳教練好像有新的球種要教你，回學校的桌球體育館找他吧！`);
+}
+function startLesson(l) {
+  world.paused = true; worldHideUI();
+  Object.assign(S, { practice: true, prFrom: 'lesson', prKind: 'drive', diff: 'normal', char: save.char, lesson: l.key, lessonDone: false });
+  startGame();
+  applyGear();   // 用自己的球拍，不會磨損
+}
+// 球種課結束（game.js 的 endPractice 呼叫）：成功就學會，中途離開下次再來
+function careerLessonEnd() {
+  const l = LESSONS.find(x => x.key === S.lesson), ok = S.lessonDone;
+  Object.assign(S, { lesson: null, lessonDone: false });
+  if (ok) save.skills[l.key] = true;
+  worldSavePos(); writeSave();
+  worldResume();
+  worldSay(ok ? [`你學會了「${l.name}」！之後的比賽就能打出${l.name}了。`, '陳教練：「別忘了，對手也會開始用這種球喔。」']
+    : ['陳教練：「沒關係，想練的時候再來找我。」']);
+}
 
 // ---------- 球拍與耐久度 ----------
 const curRacket = () => (save && save.rackets.length ? save.rackets[Math.min(save.racket, save.rackets.length - 1)] : null);
@@ -305,7 +344,8 @@ const VIEWS = {
         <span>冠軍 ${save.titles} 次</span>${save.story.principal ? `<span>賽事：${EVENT_TIERS[save.unlocked].name}</span>` : ''}</div>
       ${ui.msg ? `<div class="note">${ui.msg}</div>` : ''}
       ${r ? `<div class="card wide"><h3>🏓 使用中：${racketName(r)}</h3>${racketBars(r)}${durBar(r)}
-        <div class="sub">共有 ${save.rackets.length} 支球拍．${itemsText()}</div></div>`
+        <div class="sub">共有 ${save.rackets.length} 支球拍．${itemsText()}</div>
+        <div class="sub">會打的球種：平擊${LESSONS.filter(l => save.skills[l.key]).map(l => '、' + l.name).join('')}</div></div>`
         : `<div class="note">你還沒有球拍。${save.story.racket ? '去龍元宮商圈的商店買一支吧！' : '去學校一樓走廊盡頭的桌球體育館找陳教練吧！'}</div>`}
       ${save.run ? `<div class="note">你在「${curEvent().name}」打到${roundName(curEvent(), save.run.round)}了，回市立體育館繼續比賽吧！</div>` : ''}
       <div class="cbtns"><button class="main" data-act="world">▶ 回到地圖</button>
@@ -373,6 +413,7 @@ const VIEWS = {
     if (r.kind === 'champion') {
       return `<h1>🏆 ${r.event} 冠軍！</h1>${score}<p class="lead">獲得冠軍獎金 <span class="money">${money(r.prize)}</span></p>
         ${r.unlocked ? `<div class="note">🔓 解鎖新的賽事：${r.unlocked}！</div>` : ''}
+        ${r.lesson ? `<div class="note">${r.lesson}</div>` : ''}
         ${r.world ? `<div class="note">👑 你成為亞洲冠軍了！下一站是世界舞台……（出國比賽之後開放）</div>` : ''}
         <div class="cbtns"><button class="main" data-act="world">回到地圖</button></div>`;
     }
@@ -466,8 +507,13 @@ const ACTS = {
     save.story.racket = true; writeSave();
     careerHide();
     worldResume();
-    worldSay([`陳教練：「${st.name}嗎？不錯的選擇！」`, '陳教練：「頭上有桌球圖示的人都想找人比賽，走過去點一下畫面就能跟他比。球拍用久了會磨損，隨時回來找我保養。」'],
-      () => worldCheckSight(), '陳教練');
+    // 第一堂課：跟勁敵打一場新手教學賽
+    const rival = world.npcs.find(n => n.d.id === 'rival1');
+    worldSay([`陳教練：「${st.name}嗎？不錯的選擇！」`,
+      '陳教練：「今天先學最基本的平擊：球從哪邊飛過來，手指就從那一側往中間滑過球。」',
+      '陳教練：「上旋、下旋這些旋轉球，等你打得更穩再一個一個教你。」',
+      '陳教練：「光說不練沒有用。韓宇！你來當他的對手，打一場 5 分的練習賽。」'],
+      () => (rival && !save.beaten.rival1 ? worldSay([`${rival.d.name}：「${rival.d.intro}」`], () => startTrainerBattle(rival)) : worldCheckSight()));
   },
   exit: careerClose,
   world() { ui.msg = ''; careerHide(); worldResume(); },
@@ -574,7 +620,9 @@ function careerStartBattle(cfg) {
   if (!hasRacket()) return;
   DIFF.career = buildAI(cfg.op);
   Object.assign(S, { diff: 'career', bestOf: cfg.bestOf, pts: cfg.pts || 11, practice: false, char: save.char,
-    oppChar: cfg.op.sprite || cfg.op.char, oppName: cfg.op.name, careerMatch: true, careerKind: cfg.kind, careerTrainer: cfg.trainer || null });
+    // 地圖角色還沒有對戰動畫時，使用同個性別的現有選手圖。
+    oppChar: SPR[cfg.op.sprite] ? cfg.op.sprite : cfg.op.char, oppName: cfg.op.name, careerMatch: true, careerKind: cfg.kind, careerTrainer: cfg.trainer || null,
+    careerTutorial: !!cfg.tutorial });
   applyGear();
   careerHide();
   worldHideUI();
@@ -585,9 +633,11 @@ function careerStartBattle(cfg) {
 // 比賽結束（game.js 呼叫）
 function careerMatchEnd(won, forfeit) {
   S.careerMatch = false;
+  const tutorial = S.careerTutorial;
+  S.careerTutorial = false;
   const broken = !hasRacket();
   if (won) save.wins++; else save.losses++;
-  if (S.careerKind === 'trainer') { trainerMatchEnd(won, forfeit, broken); return; }
+  if (S.careerKind === 'trainer') { trainerMatchEnd(won, forfeit, broken, tutorial); return; }
   const ev = curEvent(), last = save.run.round === ev.ops.length - 1;
   const r = { score: S.pg + ' - ' + S.ag, forfeit, broken };
   if (won && !last) {
@@ -602,6 +652,7 @@ function careerMatchEnd(won, forfeit) {
     }
     if (ev.key && save.run.t === EVENT_TIERS.length - 1) { r.world = !save.champion; save.champion = true; }
     save.run = null;
+    const notes = []; lessonNotice(notes); r.lesson = notes[0];
   } else {
     r.kind = 'lose';
     r.prize = last && !forfeit ? ev.second : 0;
@@ -615,7 +666,8 @@ function careerMatchEnd(won, forfeit) {
 }
 
 // 路人挑戰的結果：贏了拿獎金，輸了要付錢
-function trainerMatchEnd(won, forfeit, broken) {
+// 新手教學賽（第一次跟勁敵比）：輸了不用付錢，可以再找他比
+function trainerMatchEnd(won, forfeit, broken, tutorial) {
   const t = S.careerTrainer;
   const lines = [];
   if (won) {
@@ -626,6 +678,11 @@ function trainerMatchEnd(won, forfeit, broken) {
       save.story.principal = true;
       lines.push('🔓 校際賽開放報名了！去龍元宮商圈的「市立體育館」報名吧！');
     }
+    if (tutorial) lines.push('陳教練：「打得好！平擊已經很穩了。」', '陳教練：「頭上有桌球圖示的人都想找人比賽，點一下就能跟他比。學校的老師也很會打，去挑戰看看吧！」',
+      '陳教練：「球拍用久了會磨損，隨時回來找我保養。」');
+    lessonNotice(lines);
+  } else if (tutorial) {
+    lines.push(`${t.name}：「哼，你還差得遠呢！」`, '陳教練：「第一次比賽，輸了也沒關係。多打幾球就會習慣，想再比就去找韓宇說話。」');
   } else {
     const pay = Math.min(save.money, t.prize);
     save.money -= pay;

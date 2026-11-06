@@ -195,6 +195,7 @@ const S = {
   mode: 'menu',          // menu | play | pause | over
   diff: 'normal', char: 'male', hand: 'right', bestOf: 3, sound: true,
   practice: false, prKind: 'random', prHits: 0, prTotal: 0, streak: 0, bestStreak: 0, lastKind: 'drive', rally: 0,
+  lesson: null, lessonDone: false, careerTutorial: false,   // 冠軍之路：球種課、跟勁敵的新手教學賽
   phase: 'serveWait',    // serveWait | toss | aiServe | rally | pointOver
   ps: 0, as: 0, pg: 0, ag: 0, game: 1, firstServer: 'player', server: 'player', games: [],
   timer: 0, lastHitter: null, bounces: 0, netted: false, lastPower: 0.5,
@@ -295,9 +296,9 @@ function lowBounce(tz, T, h) {
 
 // 旋轉的名稱與顏色（球的殘影也用同樣的顏色）
 function spinInfo(top, side) {
-  if (top > 0.45) return { name: '上旋拉球', rgb: '255,140,80', css: '#ff8c50' };
-  if (top < -0.3) return { name: '下旋切球', rgb: '110,170,255', css: '#6eaaff' };
-  if (Math.abs(side) > 0.35) return { name: '側旋', rgb: '130,240,130', css: '#82f082' };
+  if (top > 0.45) return { key: 'loop', name: '上旋拉球', rgb: '255,140,80', css: '#ff8c50' };
+  if (top < -0.3) return { key: 'chop', name: '下旋切球', rgb: '110,170,255', css: '#6eaaff' };
+  if (Math.abs(side) > 0.35) return { key: 'side', name: '側旋', rgb: '130,240,130', css: '#82f082' };
   return null;
 }
 
@@ -330,6 +331,12 @@ function playerShot(power, dirX, dirY, offset, sx, sy) {
   tx += inSide * 0.3 * rv;
   // 打偏、揮太慢、球已經掉到桌面以下、或用錯方法接下旋，都比較容易掛網；膠皮彈道高（GEAR.net 小）比較不會掛網
   const pNet = (0.03 + offset * offset * 0.25 * GEAR.err + (power < 0.12 ? 0.12 : 0) + (ball.y < TT ? 0.06 : 0) + spinNet) * GEAR.net;
+  // 冠軍之路：還沒學會的旋轉打不出來（接球照上面的揮拍方向算，所以往上、往下滑一樣能接回旋轉球）
+  if (S.careerMatch) {
+    if (!careerKnows('loop')) top = Math.min(top, 0.25);
+    if (!careerKnows('chop')) top = Math.max(top, -0.15);
+    if (!careerKnows('side')) side *= 0.4;
+  }
   ball.top = top; ball.side = side;
   const r = Math.random();
   if (r < pNet) hitNet(tx * 0.9, NETTOP - rand(0.02, 0.08), T * 0.5);
@@ -342,6 +349,7 @@ function playerShot(power, dirX, dirY, offset, sx, sy) {
   popups.push({ text: perfect ? 'PERFECT!' : good ? 'GOOD' : 'OK', x: sx, y: sy, t: 0,
     color: perfect ? '#ffd166' : good ? '#9be7ff' : '#ccc' });
   const si = spinInfo(top, side);
+  S.lastShotSpin = si ? si.key : null;
   if (si) popups.push({ text: si.name, x: sx, y: sy + 26, t: 0, color: si.css });
   paddle.kick = 1;
   S.rally++;
@@ -359,6 +367,9 @@ function aiShot(serve, force) {
   else if (!serve) {
     let r = Math.random();
     for (const k in d.p) { if (r < d.p[k]) { kind = k; break; } r -= d.p[k]; }
+    // 冠軍之路：對手只打你已經學會的旋轉（短球帶下旋）
+    const spin = { loop: 'loop', chop: 'chop', short: 'chop', side: 'side' }[kind];
+    if (S.careerMatch && spin && !careerKnows(spin)) kind = 'drive';
   }
   // 先決定旋轉 [上旋/下旋, 側旋]，軌跡計算會把旋轉算進去
   const SPIN = {
@@ -519,6 +530,7 @@ function point(winner, kind) {
 // 練習模式：球落在對手那半邊就算成功
 function practiceResult(ok, kind) {
   S.prTotal++;
+  if (S.lesson) { lessonResult(ok, kind); return; }
   if (ok) {
     S.prHits++; S.streak++; S.bestStreak = Math.max(S.bestStreak, S.streak);
     showMsg('好球！', '連續 ' + S.streak + ' 球', '#5dff9a', 0.9);
@@ -529,6 +541,18 @@ function practiceResult(ok, kind) {
   }
   S.phase = 'pointOver'; S.timer = 1.0;
 }
+// 冠軍之路的球種課：打出指定的旋轉、球又落在對面，成功 3 次就學會
+const LESSON_TIPS = { loop: '上旋：手指由下往上刷過球', chop: '下旋：手指由上往下切過球', side: '側旋：手指橫著用力刷過球' };
+function lessonResult(ok, kind) {
+  const name = { loop: '上旋', chop: '下旋', side: '側旋' }[S.lesson];
+  if (ok && S.lastShotSpin === S.lesson) {
+    S.prHits++;
+    if (S.prHits >= 3) { S.lessonDone = true; showMsg('學會了！', '新球種：' + name, '#ffd166', 1.6); crowd.cheer(0.8); S.phase = 'pointOver'; S.timer = 1.8; return; }
+    showMsg('好球！', `${name}成功 ${S.prHits} / 3`, '#5dff9a', 0.9);
+  } else if (ok) showMsg('球過去了，但不是' + name, LESSON_TIPS[S.lesson], '#ffb347', 1.2);
+  else showMsg('失誤', MSG_LOSE[kind], '#ff6b6b', 0.9);
+  S.phase = 'pointOver'; S.timer = 1.0;
+}
 const PR_KINDS = ['drive', 'loop', 'chop', 'side', 'short', 'lob'];
 const practiceKind = () => (S.prKind === 'random' ? PR_KINDS[(Math.random() * PR_KINDS.length) | 0] : S.prKind);
 const PR_TIPS = {
@@ -537,7 +561,10 @@ const PR_TIPS = {
 };
 
 function endOfPoint() {
-  if (S.practice) { S.phase = 'serveWait'; S.timer = 0.3; return; }
+  if (S.practice) {
+    if (S.lessonDone) { endPractice(); return; }
+    S.phase = 'serveWait'; S.timer = 0.3; return;
+  }
   if (!isGameOver()) { S.phase = 'serveWait'; S.timer = 0.4; return; }
   if (S.ps > S.as) S.pg++; else S.ag++;
   S.games.push(S.ps + '-' + S.as);
@@ -1093,7 +1120,9 @@ function drawHUD() {
   let hint = '';
   if (S.mode === 'play') {
     if (S.phase === 'toss') hint = '發球！手指從旁邊往中間滑過球';
+    else if (S.lesson) hint = LESSON_TIPS[S.lesson];
     else if (S.practice) { if (S.phase === 'rally' && S.lastHitter === 'ai') hint = PR_TIPS[S.lastKind] || ''; }
+    else if (S.careerTutorial && S.phase === 'rally' && S.lastHitter === 'ai') hint = '球從哪邊來，就點那一側往中間滑過球';
     else if (S.game === 1 && S.ps + S.as < 3 && S.phase === 'rally' && S.lastHitter === 'ai') hint = '球從哪邊來，就點那一側往中間滑';
   }
   if (hint) {
@@ -1190,6 +1219,7 @@ $('practiceBtn').addEventListener('click', () => openPractice('match'));
 function endPractice() {
   S.practice = false; ball.visible = false;
   show('pauseOv', false); show('pause', false);
+  if (S.prFrom === 'lesson') { S.mode = 'world'; GEAR = NEUTRAL_GEAR; careerLessonEnd(); return; }   // 回到桌球體育館
   if (S.prFrom === 'career') { S.mode = 'world'; GEAR = NEUTRAL_GEAR; careerShow('hub'); return; }   // 回到 ☰ 選單
   S.mode = 'menu'; menuHome();
 }
