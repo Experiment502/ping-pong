@@ -7,7 +7,7 @@ const root = new URL('../', import.meta.url);
 const element = {addEventListener() {}, style: {}, classList: {add() {}, remove() {}}};
 const sandbox = vm.createContext({
   Image: class {}, $: () => element, cv: element, window: element,
-  playSfx: () => () => {}, writeSave() {}, hasRacket: () => false,
+  playSfx: () => () => {}, writeSave() {}, hasRacket: () => false, rand: (a, b) => a + Math.random() * (b - a),
   save: {story: {mom: true, racket: false}, beaten: {}}, console,
 });
 for (const name of ['js/maps.js', 'js/world.js']) {

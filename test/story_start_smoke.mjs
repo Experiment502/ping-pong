@@ -106,4 +106,23 @@ S.careerMatch=true;
 assert(api.swing(1).top< -0.3,'Learned backspin must come out as backspin');
 assert(api.swing(-1).top<=0.25,'Topspin is still locked');
 S.careerMatch=false;
-console.log('PASS: Mom stops you at the door, no battles before class, Han Yu tutorial, flat-only start and the backspin lesson.');
+
+// Ordinary passers-by wander near where they stand; staff and challengers who spot you stay put.
+let moved=0, checks=0;
+for (const id of [1,18,5,9,7,11]) {
+  api.loadMap(id,...vm.runInContext(`freeSpot(${id},2,2)`,sandbox),'down');
+  const start=new Map(world.npcs.map(n=>[n,`${n.x},${n.y}`]));
+  for (let i=0;i<40;i++) {
+    tick(15);
+    for (const n of world.npcs) {
+      checks++;
+      assert(!world.m.solid[n.y][n.x] && !world.m.warpAt[`${n.x},${n.y}`] && !world.m.doors[`${n.x},${n.y}`],`${n.d.name} walked onto a wall or doorway`);
+      assert(!(n.x===world.x && n.y===world.y),`${n.d.name} walked into you`);
+      if (n.home) assert(Math.abs(n.x-n.home.x)<=2 && Math.abs(n.y-n.home.y)<=2,`${n.d.name} wandered off`);
+      else assert.equal(`${n.x},${n.y}`,start.get(n),`${n.d.name} must stay put`);
+    }
+  }
+  moved+=world.npcs.filter(n=>`${n.x},${n.y}`!==start.get(n)).length;
+}
+assert(moved>=5,'Passers-by should walk around');
+console.log(`PASS: Mom stops you at the door, no battles before class, Han Yu tutorial, flat-only start, the backspin lesson, and ${moved} passers-by walking around.`);

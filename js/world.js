@@ -56,6 +56,7 @@ function loadMap(id, x, y, dir) {
   Object.assign(world, { id, m, x, y, dir, moving: false, fx: x, fy: y, t: 0, turnT: 0, cut: null, calm: null });
   world.npcs = m.trainers.map(t => ({ type: 'trainer', d: t, x: t.x, y: t.y, dir: t.dir, sp: t.sprite, pal: palette(t.name, t.char, t) }))
     .concat(m.npcs.map(n => ({ type: 'npc', d: n, x: n.x, y: n.y, dir: n.dir, sp: n.sprite, pal: palette(n.name, n.char, n) })));
+  for (const n of world.npcs) if (wanders(n)) Object.assign(n, { home: { x: n.x, y: n.y }, wait: rand(0.5, 3) });
   mapImg(id);
   for (const w of m.warps) mapImg(w.to);   // 先載入隔壁地圖的圖片
   world.banner = 2.2;
@@ -150,6 +151,7 @@ function updateWorld(dt) {
   }
   if (world.cut) { updateCut(dt); return; }
   if (world.paused || world.dialog || world.lock) return;
+  updateNpcs(dt);
   if (world.moving) {
     world.t += dt * SPEED / cellOf();
     if (world.t >= 1) { world.t = 1; arrive(); }
@@ -199,6 +201,31 @@ function momStop() {
   Object.assign(world, { x: world.fx, y: world.fy, dir: 'up' });
   wsfx.bump();
   worldSay(['媽媽：「等一下！要出門前先過來跟媽媽說一聲啊！」']);
+}
+
+// ---------- 路人走動：一般路人在原地附近隨意走走（教練、店員、老師和會衝過來挑戰的人站著不動） ----------
+const WANDER_R = 2, WANDER_SPEED = 2.2;   // 離原地最多幾格、每秒走幾格
+function wanders(n) {
+  const d = n.d;
+  return n.type === 'npc' ? d.role === 'talk' && !d.across : !d.spot && !d.teacher;
+}
+// 不能走到門口、出入口，也不能擋住你正要走去或剛離開的格子
+function npcFree(x, y) {
+  const m = world.m, k = x + ',' + y;
+  return !blocked(x, y) && !m.warpAt[k] && !m.doors[k] && !(x === world.x && y === world.y) && !(world.moving && x === world.fx && y === world.fy);
+}
+function updateNpcs(dt) {
+  for (const n of world.npcs) {
+    if (!n.home) continue;
+    if (n.moving) { n.t += dt * WANDER_SPEED / cellOf(); if (n.t >= 1) { n.t = 1; n.moving = false; } continue; }
+    if ((n.wait -= dt) > 0) continue;
+    n.wait = rand(1.5, 4);
+    n.dir = Object.keys(DIRV)[(Math.random() * 4) | 0];
+    if (Math.random() < 0.3) continue;   // 有時候只是轉頭看看
+    const [dx, dy] = DIRV[n.dir], x = n.x + dx, y = n.y + dy;
+    if (Math.abs(x - n.home.x) > WANDER_R || Math.abs(y - n.home.y) > WANDER_R || !npcFree(x, y)) continue;
+    Object.assign(n, { fx: n.x, fy: n.y, x, y, moving: true, t: 0, walkD: (n.walkD || 0) + cellOf() });
+  }
 }
 
 // ---------- 路人：看到你就來挑戰 ----------
@@ -265,6 +292,7 @@ function pressA() {
 const quote = (name, lines) => lines.map(l => `${name}：「${l}」`);
 function talk(n) {
   n.dir = OPPOSITE[world.dir];
+  if (n.home) Object.assign(n, { moving: false, wait: rand(2, 4) });   // 停下來聽你說話，說完先別走開
   const d = n.d;
   if (n.type === 'trainer') {
     if (save.beaten[d.id]) return worldSay([`${d.name}：「${d.after}」`]);
