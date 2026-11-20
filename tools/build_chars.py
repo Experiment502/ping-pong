@@ -382,7 +382,12 @@ def pure_bg(a):
 
 def one_figure(path):
     """一張圖只有一個人：去背，頭髮之間被包住的洋紅背景也去掉"""
-    f = despill(cutout(np.array(Image.open(path).convert('RGB')).astype(int)))
+    raw = np.array(Image.open(path).convert('RGB')).astype(int)
+    ys, xs = np.nonzero(~magenta(raw))
+    assert len(ys), f'{path}: 找不到角色'
+    # 先裁掉純背景並保留一圈邊界，不改角色像素，批次去背才不必掃整張大圖。
+    raw = raw[max(0, ys.min() - 1):ys.max() + 2, max(0, xs.min() - 1):xs.max() + 2]
+    f = despill(cutout(raw))
     f[pure_bg(f), 3] = 0
     return f
 
@@ -443,9 +448,11 @@ def place(atlas, rows, key, bx, by):
     return dirs
 
 
-# 對戰模式的對手：男、女各用哪個資料夾、第一張準備姿勢有多高（原圖像素；遊戲裡 106 像素 = 1.3 公尺）
-# 主角（男）還沒有對戰姿勢，男對手也先用學姊
+# 對戰角色使用各自的資料夾；male/female 保留直接比賽的選手別名。
+# 第一張準備姿勢的高度（遊戲裡 106 像素 = 1.3 公尺）。
 BATTLE = {'male': ('player_m', 108), 'female': ('15_female_referee', 108)}
+BATTLE.update({folder: (folder, 108) for folder in sorted(os.listdir(os.path.join(ROOT, 'assets', 'char_frames')))
+               if os.path.isdir(os.path.join(ROOT, 'assets', 'char_frames', folder))})
 # 每個動作用哪幾張圖（都是正面）。準備和移動每張重複兩次，晃動才不會太快
 BATTLE_ANIMS = {
     'idle': ['ready_1', 'ready_1', 'ready_2', 'ready_2'],
@@ -481,7 +488,12 @@ def paddle_x(a):
 
 if len(sys.argv) > 1 and sys.argv[1] == '--battle':
     figs, pad, anims = {}, {}, {}
+    processed = {}
     for ch, (folder, h) in BATTLE.items():
+        if folder in processed:
+            prev = processed[folder]
+            figs[ch], anims[ch] = figs[prev], anims[prev]
+            continue
         path = os.path.join(ROOT, 'assets', 'char_frames', folder)
         full = all(os.path.exists(os.path.join(path, n + '.png')) for v in BATTLE_ANIMS.values() for n in v)
         anims[ch] = BATTLE_ANIMS if full else BATTLE_FALLBACK
@@ -490,6 +502,8 @@ if len(sys.argv) > 1 and sys.argv[1] == '--battle':
         s_ = h / raw[anims[ch]['idle'][0]].shape[0]            # 全部用同一個比例縮小
         figs[ch] = {n: np.array(Image.fromarray(f).resize((max(1, round(f.shape[1] * s_)), max(1, round(f.shape[0] * s_))), Image.LANCZOS))
                     for n, f in raw.items()}
+        processed[folder] = ch
+        print('對戰角色', ch, '：', len(raw), '張', flush=True)
     # 每個人每張圖排一行：x, y, w, h, 身體中心 x（遊戲裡叫「腳的中心」，站的位置對齊這裡）
     PADX = 2
     uniq = {BATTLE[ch][0]: fs for ch, fs in figs.items()}       # 每個資料夾只排一次
@@ -524,9 +538,11 @@ if len(sys.argv) > 1 and sys.argv[1] == '--battle':
     portraits = {}
     for ch, (folder, _) in BATTLE.items():
         src_ = os.path.join(ROOT, 'assets', 'char_frames', folder, 'portrait.png')
-        if not os.path.exists(src_): continue
-        f = one_figure(src_); s_ = 300 / f.shape[0]
         out = os.path.join(ROOT, 'assets', 'portraits', folder + '.png')
+        if not os.path.exists(src_):
+            if os.path.exists(out): portraits[ch] = 'assets/portraits/' + folder + '.png'
+            continue
+        f = one_figure(src_); s_ = 300 / f.shape[0]
         os.makedirs(os.path.dirname(out), exist_ok=True)
         Image.fromarray(f).resize((round(f.shape[1] * s_), 300), Image.LANCZOS).save(out, optimize=True)
         portraits[ch] = 'assets/portraits/' + folder + '.png'

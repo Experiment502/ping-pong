@@ -291,7 +291,7 @@
     "trainers": [
       {
         "id": "t_lin",
-        "dir": "right",
+      "dir": "down",
         "name": "班導 林老師",
         "char": "female",
         "style": "allround",

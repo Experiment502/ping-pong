@@ -35,7 +35,7 @@ def atlas(name,grid=4):
             alpha=cell.getchannel('A').point(lambda a:255 if a>160 else 0)
             bounds=alpha.getbbox()
             index=y*grid+x
-            if (name=='outdoor' and index not in (0,1,2,3,6)) or (name=='indoor' and index not in (0,1)) or name in ('school_interior','longtan_landmarks'):
+            if (name=='outdoor' and index not in (0,1,2,3,6)) or (name=='indoor' and index not in (0,1)) or name in ('school_interior','longtan_landmarks','bench_directions'):
                 pixels=alpha.tobytes(); seen=bytearray(len(pixels)); largest=[]
                 for seed,value in enumerate(pixels):
                     if not value or seen[seed]: continue
@@ -63,7 +63,12 @@ SPRITES['sofa_north']=sofa.crop(sofa.getchannel('A').point(lambda a:255 if a>160
 school=Image.open(os.path.join(ROOT,'assets/maps/tiles/japanese_school.png')).convert('RGBA')
 SPRITES['japanese_school']=school.crop(school.getchannel('A').point(lambda a:255 if a>160 else 0).getbbox())
 bench=Image.open(os.path.join(ROOT,'assets/maps/tiles/bench.png')).convert('RGBA')
-SPRITES['bench']=bench.crop(bench.getchannel('A').point(lambda a:255 if a>160 else 0).getbbox())
+SPRITES['bench_down']=bench.crop(bench.getchannel('A').point(lambda a:255 if a>160 else 0).getbbox())
+bench_views=atlas('bench_directions',2)
+SPRITES.update(bench_up=bench_views[0],bench_right=bench_views[1],bench_left=bench_views[3])
+for name in ('teacher_lectern','student_desk'):
+    asset=Image.open(os.path.join(ROOT,'assets/maps/tiles',name+'.png')).convert('RGBA')
+    SPRITES[name]=asset.crop(asset.getchannel('A').point(lambda a:255 if a>160 else 0).getbbox())
 school_furniture=atlas('school_interior',2)
 SPRITES.update(dict(zip(('school_door','noticeboard','shoe_lockers','school_window'),school_furniture)))
 landmarks=atlas('longtan_landmarks',2)
@@ -176,8 +181,7 @@ def render(m):
     for p in sorted(m['art']['props'],key=lambda p:p['y']+p['h']):
         name,x,y,ww,hh=[p[k] for k in ('art','x','y','w','h')]
         if name=='bench':
-            # Two tiles wide and under a tile tall: seats two people, backrest about waist height.
-            sprite(name,x,y,ww,hh)
+            sprite('bench_'+p['dir'],x,y,ww,hh)
         elif name=='pillar':
             rect(x,y+.2,ww,hh-.2,'#7f8a82'); rect(x+.12,y+.15,ww-.24,hh-.35,'#c2c8a7')
             rect(x-.08,y,ww+.16,.3,'#dde0bf')
@@ -288,11 +292,11 @@ for i,mid in enumerate(order):
     sd.text((x+12,y+8),f'{i+1:02d}  {m["name"]}',font=font(18),fill='#ecdeb3')
     sheet.paste(image,(x+12+(456-image.width)//2,y+42))
 sheet.save(os.path.join(DEST,'overview.png'))
-# Four full-size representative scenes for art/layout review.
-for mid in (1,2,3,7,9,10,15,18,20,11):
+# Full-size representative scenes for art/layout review.
+for mid in (1,2,3,6,7,8,9,10,12,14,15,16,17,18,20,11):
     m=maps[str(mid)]
     im=Image.open(os.path.join(DEST,f'{mid:02d}.png'))
-    with_people(im,m,(5,5) if mid==15 else None).save(os.path.join(DEST,f'preview-{mid:02d}.png'))
+    with_people(im,m,(5,5) if mid in (15,16,17) else None).save(os.path.join(DEST,f'preview-{mid:02d}.png'))
 # Preserve the previous preview link while showing the latest layout.
 Image.open(os.path.join(DEST,'preview-01.png')).save(os.path.join(DEST,'character-preview.png'))
 # Show a bench in the park with a character beside it for scale.

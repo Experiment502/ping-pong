@@ -1,6 +1,6 @@
 # Wooden bench
 
-Generated with the built-in imagegen tool. File: bench.png. Used by every bench in the authored maps, including campus, park, corridors and indoor venues. The sprite's backrest rises above its existing one-tile collision footprint.
+Generated with the built-in imagegen tool. File: bench.png. This is the south-facing bench and the reference for [the directional bench atlas](bench_directions.md). Placements choose a direction based on the scene. North/south benches occupy 2x1 tiles; east/west benches occupy 1x2 tiles.
 
 ## Prompt
 

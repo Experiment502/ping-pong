@@ -1,0 +1,16 @@
+# Directional benches
+
+Generated with the built-in imagegen tool using bench.png as the identity and style reference. File: bench_directions.png, a 2x2 atlas: north/rear at top left, east at top right, south at bottom left, west at bottom right. The original bench.png remains the south-facing game sprite; the atlas supplies the other three directions.
+
+Each placement uses bench(plan,x,y,facing) in tools/map_layouts.py. North/south occupy 2x1 cells; east/west occupy 1x2. The renderer selects the corresponding drawn perspective, without rotating the front-view bitmap. Lake east-bank benches face west, south-bank benches face north; school field-side benches face inward; gym benches face the tables; repair-center benches face the waiting area.
+
+## Imagegen prompt
+
+Use case: stylized-concept. Asset type: a four-direction furniture sprite atlas for an existing GBA top-down pixel RPG. Reference is the EXACT BENCH identity/style to preserve: warm golden horizontal wooden slats, dark blue-gray cast iron frames, small armrests and two feet. Draw the same bench from four compass directions with the CAMERA FIXED ABOVE AND SOUTH of the map. These are newly drawn directional views, NOT rotated copies of a front-facing bitmap. Match the reference's crisp low-resolution 16-bit pixel clusters, outlines and warm oak / dark metal palette.
+EXACT 2x2 equal grid with no visible lines. Each sprite fully contained in its cell, at least 15% transparent padding around every sprite, nothing crosses cell boundaries. Genuine transparent background, no scenery, ground, text, labels, compass arrows, numbers, drop-shadow tiles or UI.
+TOP LEFT = bench FACES NORTH (up): long axis horizontal. We see its OUTSIDE REAR backrest near the BOTTOM edge, broad solid timber rear planks and metal supports; a narrow glimpse of the seat surface appears on the FAR/TOP side beyond the backrest. Feet remain at bottom. A seated person's gaze points toward the top of the screen. Do not show the reference's south-facing front.
+TOP RIGHT = bench FACES EAST (right): its long seating axis runs exactly NORTH-SOUTH, VERTICAL in the image. Backrest is on the LEFT/WEST side of the seat; seat surface and open sitting side are to its RIGHT/EAST. Short armrests at top and bottom ends. Narrow vertical silhouette roughly half as wide as tall. Show overhead depth and the near south foot, no diagonal isometric alignment.
+BOTTOM LEFT = bench FACES SOUTH (down): match reference front-facing bench, horizontal long axis, backrest at far/TOP side, visible seat below, front legs at bottom. A wide horizontal silhouette roughly twice as wide as tall.
+BOTTOM RIGHT = bench FACES WEST (left): vertical long seating axis; backrest on RIGHT/EAST side, open seat surface on LEFT/WEST; short armrests at top and bottom ends. Same size as east-facing view with coherent upper-left lighting.
+All bench orientations are the SAME PHYSICAL SCALE. North/south span about 64 logical pixels by 28; east/west span about 28 by 64. Atlas roughly 192x192 logical pixels enlarged nearest-neighbor. Long horizontal and vertical edges stay aligned to image axes. Limited 3-4 flat shades per material, no gradients, no photo/3D rendering, no modern vector icons. No people, buildings or other furniture.
+

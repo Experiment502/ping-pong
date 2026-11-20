@@ -30,6 +30,12 @@ def prop(p, art, x, y, w, h, **kw):
     p['props'].append(item)
 
 
+def bench(p, x, y, facing):
+    assert facing in ('up','down','left','right'), facing
+    w,h=(1,2) if facing in ('left','right') else (2,1)
+    prop(p,'bench',x,y,w,h,dir=facing)
+
+
 def path(p, *rects, tile='sand'):
     for rect in rects:
         surface(p, tile, *rect)
@@ -63,37 +69,37 @@ person(p,'n1',17,15); person(p,'晨跑的阿伯',27,14); person(p,'鄰居阿姨'
 
 # Bedrooms have a clear center and furniture against the perimeter.
 p=room(15,12,11)
-prop(p,'bed',9,3,2,3,kind='bed',role='save',text='在床上休息一下……進度已經存檔了！')
-prop(p,'desk',2,3,2,2,kind='desk',text='書桌上放著爸爸比賽的照片。')
+prop(p,'bed',9,4,2,2,kind='bed',role='save',text='在床上休息一下……進度已經存檔了！')
+prop(p,'desk',3,3,1,2,kind='desk',text='書桌上放著爸爸比賽的照片。')
 prop(p,'bookshelf',5,2,2,2); prop(p,'plant',9,8,1,1)
 surface(p,'rug_blue',4,6,4,2)
 prop(p,'stairs',1,8,2,2,solid=False)
 
 p=room(2,14,12)
 prop(p,'stairs',1,3,2,2,solid=False)
-prop(p,'tv',4,3,2,2,kind='tv',text='電視正在播體育新聞。')
-prop(p,'sofa_north',3,6,4,2); prop(p,'kitchen',8,2,4,2,kind='desk',text='廚房裡飄來早餐的香味。')
-prop(p,'dining',9,6,2,2); prop(p,'plant',12,9,1,1)
-surface(p,'rug_red',2,5,5,4)
+prop(p,'tv',3,4,2,1,kind='tv',text='電視正在播體育新聞。')
+prop(p,'sofa_north',3,7,2,1); prop(p,'kitchen',9,2,2,2,kind='desk',text='廚房裡飄來早餐的香味。')
+prop(p,'dining',9,7,2,1); prop(p,'plant',12,9,1,1)
+surface(p,'rug_red',2,5,4,4)
 person(p,'媽媽',10,8)
 
 p=room(3,14,12)
 prop(p,'stairs',11,3,2,2,solid=False)
-prop(p,'kitchen',2,2,4,2); prop(p,'tv',8,3,2,2)
-prop(p,'sofa_north',7,6,4,2); prop(p,'dining',3,7,2,2); prop(p,'plant',1,9,1,1)
-surface(p,'rug_blue',6,5,5,4)
+prop(p,'kitchen',3,2,2,2); prop(p,'tv',7,4,2,1)
+prop(p,'sofa_north',7,7,2,1); prop(p,'dining',3,8,2,1); prop(p,'plant',1,9,1,1)
+surface(p,'rug_blue',6,5,4,4)
 person(p,'韓宇的姊姊',10,8)
 
 p=room(16,12,11)
-prop(p,'bed',1,3,2,3); prop(p,'desk',7,3,2,2,kind='desk',text='書桌上貼滿了桌球選手的海報。')
+prop(p,'bed',1,4,2,2); prop(p,'desk',8,3,1,2,kind='desk',text='書桌上貼滿了桌球選手的海報。')
 prop(p,'bookshelf',4,2,2,2); prop(p,'stairs',9,8,2,2,solid=False)
 surface(p,'rug_red',4,6,4,2)
 
 p=room(17,14,12)
-prop(p,'bookshelf',2,2,3,2); prop(p,'kitchen',8,2,4,2)
-prop(p,'sofa',2,6,3,2); prop(p,'dining',8,6,3,2)
+prop(p,'bookshelf',2,2,2,2); prop(p,'kitchen',9,2,2,2)
+prop(p,'sofa',2,6,2,2); prop(p,'dining',8,7,2,1)
 prop(p,'plant',1,9,1,1); prop(p,'plant',12,9,1,1)
-surface(p,'rug_green',1,5,5,4)
+surface(p,'rug_green',1,5,4,4)
 
 # Longtan Pond is the western park: a long lake, island shrine and east-bank courts.
 p=scene(18,36,42)
@@ -106,7 +112,7 @@ surface(p,'paving',10,17,6,5)
 surface(p,'bridge',16,20,9,2)
 prop(p,'island_shrine',10,17,6,4,kind='landmark',name='南天宮',text='湖心的南天宮，沿橋走就能到。')
 prop(p,'ttable',27,9,2,4,kind='ttable',text='龍潭池東岸的桌球桌，常常有人在這裡打球。')
-prop(p,'bench',21,9,2,1); prop(p,'bench',22,29,2,1); prop(p,'bench',6,37,2,1)
+bench(p,21,9,'left'); bench(p,22,29,'left'); bench(p,6,37,'up')
 prop(p,'flowers',28,4,4,1); prop(p,'flowers',28,33,4,2)
 trees(p,(4,2),(31,2),(30,36),(5,39),(12,39),(20,39))
 person(p,'上班族 王先生',24,12); person(p,'r2',31,10); person(p,'外送員 阿峰',27,32)
@@ -127,7 +133,7 @@ p=scene(9,26,36)
 path(p,(11,8,4,8),(4,10,18,3),tile='paving')
 prop(p,'japanese_school',4,2,19,7,kind='building',name='教學樓')
 prop(p,'flagpole',5,12,1,3)
-prop(p,'bench',19,13,2,1)
+bench(p,19,13,'down')
 for x in (2,21):
     prop(p,'flowers',x,10,3,1)
 trees(p,(2,2),(23,2),(2,5),(23,5))
@@ -137,7 +143,7 @@ surface(p,'chalk_track',3,18,20,14)
 path(p,(12,33,3,3),tile='paving')
 prop(p,'goal_left',4,24,2,2); prop(p,'goal_right',20,24,2,2)
 prop(p,'bars',5,16,3,2)
-prop(p,'bench',1,22,2,1); prop(p,'bench',23,22,2,1)
+bench(p,1,22,'right'); bench(p,23,22,'left')
 trees(p,(1,16),(23,16),(1,32),(23,32))
 person(p,'pe',3,26); person(p,'f1',22,20); person(p,'足球隊 阿德',13,25)
 
@@ -163,12 +169,12 @@ person(p,'h3',16,6)
 p=room(6,16,13,'school_floor')
 prop(p,'blackboard',5,1,6,1,solid=False,kind='blackboard',text='黑板上寫著：「今天的值日生：你」')
 prop(p,'noticeboard',1,1,2,1,solid=False)
-prop(p,'desk',7,3,2,2)
+prop(p,'teacher_lectern',7,4,2,1)
 for y in (6,9):
-    for x in (2,5,8,11):
-        prop(p,'desk',x,y,2,2)
+    for x in (3,6,9,12):
+        prop(p,'student_desk',x,y,1,2)
 prop(p,'plant',14,2,1,1)
-person(p,'t_lin',3,4); person(p,'cl1',13,4); person(p,'班長 小雯',10,8)
+person(p,'t_lin',7,3); person(p,'cl1',13,4); person(p,'班長 小雯',10,8)
 
 p=room(21,18,13,'school_floor')
 prop(p,'noticeboard',7,1,3,1,solid=False)
@@ -182,7 +188,7 @@ prop(p,'noticeboard',1,1,3,1,solid=False)
 for x in (5,10,15):
     surface(p,'court',x-1,5,4,6)
     prop(p,'ttable',x,6,2,4,kind='ttable',text='桌球桌。今天也要好好練習！')
-prop(p,'bookshelf',8,2,3,2); prop(p,'bench',7,13,2,1); prop(p,'bench',13,13,2,1)
+prop(p,'bookshelf',8,2,3,2); bench(p,7,13,'up'); bench(p,13,13,'up')
 person(p,'桌球陳教練',4,3); person(p,'rival1',3,12); person(p,'tt2',18,4)
 
 # Roads between the northern temple district, western lake and southern school.
@@ -190,7 +196,7 @@ p=scene(10,34,30)
 path(p,(0,14,28,3),(23,0,3,17),(25,14,3,16),tile='paving')
 prop(p,'streetfront',7,6,7,5,kind='building',name='龍潭街屋',locked=True)
 prop(p,'streetfront',4,21,7,5,kind='building',name='街角店家',locked=True)
-prop(p,'flowers',16,8,4,2); prop(p,'bench',16,20,2,1)
+prop(p,'flowers',16,8,4,2); bench(p,16,20,'up')
 trees(p,(2,2),(8,2),(16,2),(28,2),(2,26),(12,26),(30,26))
 person(p,'u1',6,15); person(p,'騎腳踏車的大哥',23,18); person(p,'u3',20,18)
 
@@ -205,7 +211,7 @@ prop(p,'school',3,12,9,6,kind='building',name='市立體育館')
 prop(p,'red_house',28,12,7,5,kind='building',name='恢復中心')
 prop(p,'blue_house',3,22,7,5,kind='building',name='球具店')
 prop(p,'market_stall',12,15,3,2); prop(p,'market_stall',24,15,3,2)
-prop(p,'bench',23,21,2,1); prop(p,'lamp',12,12,1,2); prop(p,'lamp',26,12,1,2)
+bench(p,23,21,'left'); prop(p,'lamp',12,12,1,2); prop(p,'lamp',26,12,1,2)
 for rect in [(13,23,2,1),(23,23,3,1),(12,4,1,3),(27,4,1,3)]:
     prop(p,'flowers',*rect)
 trees(p,(1,2),(10,2),(27,2),(35,9),(1,18),(35,23))
@@ -214,7 +220,7 @@ person(p,'u4',19,13); person(p,'逛街的姊姊',28,20); person(p,'市民',15,23
 
 p=room(12,16,13,'school_floor')
 prop(p,'counter',5,4,7,1,kind='counter')
-prop(p,'bookshelf',2,2,2,2); prop(p,'bench',2,8,2,1); prop(p,'bench',11,8,2,1)
+prop(p,'bookshelf',2,2,2,2); bench(p,2,8,'right'); bench(p,11,8,'left')
 prop(p,'plant',1,10,1,1); prop(p,'plant',14,10,1,1)
 surface(p,'rug_red',6,8,4,3)
 person(p,'恢復中心的姊姊',8,3)
@@ -230,7 +236,7 @@ for x in (5,14):
     surface(p,'court',x-1,6,4,6)
     prop(p,'ttable',x,7,2,4,kind='ttable',text='比賽用的桌球桌，擦得亮晶晶的。')
 prop(p,'counter',8,3,6,1,kind='counter')
-prop(p,'bench',3,14,2,1); prop(p,'bench',16,14,2,1)
+bench(p,3,14,'up'); bench(p,16,14,'up')
 prop(p,'plant',2,3,1,1); prop(p,'plant',19,3,1,1)
 person(p,'報名櫃檯 小姐',10,4)
 

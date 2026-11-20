@@ -113,9 +113,19 @@ python3 tools/draw_pixel_maps.py
 
 `node test/story_start_smoke.mjs` 檢查開場劇情：沒跟媽媽說話會被叫住、上學路上不會比賽、跟韓宇的新手教學賽、一開始只能打平擊，以及跟陳教練學下旋。
 
+`node test/battle_start_smoke.mjs` 會載入實際遊戲程式，檢查 16 位挑戰者從對話進入比賽、使用自己的動畫、得分及返回地圖，並涵蓋賽事猜球與直接比賽。測試也會檢查圖集座標、球拍位置，以及老奶奶沒有誤用女裁判的圖片。測試以瀏覽器 API 替身執行，不包含實機觸控與音效。
+
+對戰圖集包含 `assets/char_frames/` 內的 22 個角色，老奶奶使用 `grandma`、勁敵使用 `rival`，其餘角色同樣對應自己的資料夾。新增或修改角色圖片後，安裝 Pillow 與 NumPy，再執行 `python3 tools/build_chars.py --battle` 重建 `assets/battle.png` 和 `js/battle.js`。找不到專屬對戰圖的新角色仍有男／女選手備援，避免畫面中斷。
+
 校園配置參考日本小學：長條平頂校舍、三層成排窗戶與中央玄關；操場採砂土面、白色跑道與球場標線，並設球門、單槓。走廊的玻璃拉門嵌在後牆，兩片門扇前的門檻都可通行。校舍素材與參考來源見 `assets/maps/tiles/japanese_school.md`。
 
 校內走廊、教室、辦公室和桌球體育館共用現有木地板與木質家具色盤，門窗沿用連續米白牆面。普通教室走廊以公告欄、班級門牌為主，一樓另有鞋櫃；休息長椅設於戶外和場館內。校內新素材與提示詞見 `assets/maps/tiles/school_interior.md`。
+
+教室黑板前使用獨立講桌，老師站在講桌後方；學生單人課桌椅面向黑板，桌寬約一格，椅背寬度配合人物肩寬。碰撞範圍包含桌椅，列間保留通路。素材與生成提示詞見 `assets/maps/tiles/classroom_furniture.md`。
+
+住宅家具沿用現有素材，以人物比例調整尺寸：單人床約 38×64 px、書桌椅約 32×40 px、沙發寬 64 px、電視連櫃約 26×32 px；高書櫃維持比人物高。主角家、韓家與老奶奶家採相同尺度，客廳沙發面向並對準電視。`preview-15.png`、`preview-16.png` 和 `preview-17.png` 加入人物供比例檢查，遊戲地圖本身不含預覽人物。
+
+長椅依場景位置設定朝向：湖邊朝湖面、操場兩側朝中央、體育館朝球桌，恢復中心朝候位區。`tools/map_layouts.py` 的 `bench()` 同時設定方向和佔地，側向長椅使用直排兩格；四方向素材說明見 `assets/maps/tiles/bench_directions.md`。
 
 ```
 .
